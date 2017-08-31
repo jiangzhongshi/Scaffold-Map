@@ -1,0 +1,4 @@
+[submodule "libigl"]
+	path = libigl
+	url = https://github.com/jiangzhongshi/libigl.git
+	branch = scaffold_customize
