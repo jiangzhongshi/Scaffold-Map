@@ -95,7 +95,7 @@ void ScafData::add_soft_constraints(int b, const Eigen::RowVectorXd &bc) {
 }
 
 
-void ScafData::mesh_improve() {
+void ScafData::mesh_improve(bool in_packing = false) {
   if (dim == 3) {
     igl::Timer timer;
     timer.start();
@@ -234,7 +234,7 @@ void ScafData::mesh_improve() {
       rect_len << ob(1, 0) - ob(0, 0), ob(1, 1) - ob(0, 1);
       int frame_points = 5;
 
-      if(false) {
+      if(in_packing) {
         // adjust to square, as in packing
         if (rect_len(0) > rect_len(1)) {
           ob(1, 1) = ob(0, 1) + rect_len(0);

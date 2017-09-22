@@ -19,7 +19,7 @@ struct ScafData {
   void add_new_patch(const Eigen::MatrixXd&, const Eigen::MatrixXi&,
                      const Eigen::RowVectorXd &center);
 
-  void mesh_improve();
+  void mesh_improve(bool);
   void automatic_expand_frame(double min=2.0, double max = 3.0);
 
   void add_soft_constraints(int b,
@@ -51,17 +51,12 @@ struct ScafData {
     EXP_SYMMETRIC_DIRICHLET
   };
   SLIM_ENERGY scaf_energy = SYMMETRIC_DIRICHLET;
-  double scaf_threshold = 0.05;
-  double density = 100;
-
-
 
 // Optional Input
 
   double exp_factor = 1.0; // used for exponential energies, ignored otherwise
 
 // Output
-  Eigen::MatrixXd V_o; // current uv positions
   double energy; // objective value
 
 // INTERNAL

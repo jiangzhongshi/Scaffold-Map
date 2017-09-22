@@ -5,7 +5,6 @@
 #ifndef SCAFFOLD_TEST_WEIGHTEDSCAFFOLD_H
 #define SCAFFOLD_TEST_WEIGHTEDSCAFFOLD_H
 
-#include "ScaffoldSolver.h"
 #include "ScafData.h"
 #include <igl/serialize.h>
 #include <Eigen/Dense>
