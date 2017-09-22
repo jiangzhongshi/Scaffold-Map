@@ -18,7 +18,7 @@ git clone --recursive https://github.com/jiangzhongshi/scaffold-map.git
 ```
 ### Building [![Build Status](https://travis-ci.org/jiangzhongshi/scaffold-map.svg)](https://travis-ci.org/jiangzhongshi/scaffold-map)
 
-To build the program, you can use the CMakeLists.txt in
+To build the program, you can make use of `CMakeLists.txt` in
 the root folder:
 
 ```bash
@@ -29,7 +29,7 @@ make
 ```
 ### Running
 ```bash
-./build/scaffold-test_bin models/camel_b.obj
+./build/scaffold-test_bin camel_b.obj
 ```
 
 ## License
