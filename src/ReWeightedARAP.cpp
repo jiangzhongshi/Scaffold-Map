@@ -778,7 +778,7 @@ void ReWeightedARAP::add_soft_constraints(Eigen::SparseMatrix<double> &L,
 }
 
 void ReWeightedARAP::mesh_improve() {
-    d_.mesh_improve();
+    d_.mesh_improve(false);
     after_mesh_improve();
 }
 

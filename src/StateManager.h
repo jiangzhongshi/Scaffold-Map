@@ -7,8 +7,6 @@
 
 #include "ReWeightedARAP.h"
 #include "ScafData.h"
-#include "BFGS/SequentialLBFGS.h"
-
 #include <string>
 #include <memory>
 #include <iostream>
