@@ -102,7 +102,7 @@ bool TextureGUI::mouse_down(int button) {
           d_.w_uv.row(v_min + i) = V_temp.row(i) + center;
         }
 
-        d_.mesh_improve();
+        d_.mesh_improve(true); // packing
         picked_component = -1;
 
         re_draw_ = true;

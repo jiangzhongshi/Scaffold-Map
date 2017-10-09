@@ -68,7 +68,7 @@ void parameterization_init( std::string filename, Eigen::MatrixXd& V_ref,
 &F_ref,
                            Eigen::MatrixXd& V_all, Eigen::MatrixXi &F_scaf,
                            Eigen::VectorXi &frame_id, Eigen::MatrixXi&disp_F);
-void bars_stack_construction(ScafData& d_);
+//void bars_stack_construction(ScafData& d_);
 
 void tight_packing_init(std::string, ScafData&);
 StateManager::StateManager(std::string filename):
@@ -98,7 +98,8 @@ iter_count(0) {
       break;
 
     case DemoType::BARS:
-      bars_stack_construction(scaf_data);
+        assert(false);
+//      bars_stack_construction(scaf_data);
       break;
     case DemoType::FLOW:
     default:
