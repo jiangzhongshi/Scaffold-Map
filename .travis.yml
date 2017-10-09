@@ -3,14 +3,14 @@ sudo: false
 matrix:
   include:
     - os: linux
-      compiler: gcc-5.2
+      compiler: gcc-5
       script:
         - git submodule update --init --recursive
         - mkdir libigl/external/nanogui/ext/glfw/include/GL
         - wget --no-check-certificate -P libigl/external/nanogui/ext/glfw/include/GL http://www.opengl.org/registry/api/GL/glcorearb.h
         - mkdir build
         - cd build
-        - cmake -DLIBIGL_USE_STATIC_LIBRARY=ON -DCMAKE_CXX_COMPILER=g++-5.2 -DCMAKE_C_COMPILER=gcc-5.2 ../
+        - cmake -DLIBIGL_USE_STATIC_LIBRARY=ON -DCMAKE_CXX_COMPILER=g++-5 -DCMAKE_C_COMPILER=gcc-5 ../
         - make -j 2
       addons:
         apt:
@@ -20,7 +20,7 @@ matrix:
           packages:
             - xorg-dev
             - libglu1-mesa-dev
-            - g++-5.2
+            - g++-5
             - cmake
             - cmake-data
             - libblas-dev
