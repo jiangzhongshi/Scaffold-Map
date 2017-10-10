@@ -55,7 +55,7 @@ bool DeformGUI::key_press(unsigned int key, int mod) {
       timer.start();
       if(optimize_scaf) {
         d_.rect_frame_V.resize(0,0);
-        d_.mesh_improve();
+        d_.mesh_improve(false);
         if(!use_newton) ws_solver->after_mesh_improve();
       } else {
         d_.automatic_expand_frame(2,3);

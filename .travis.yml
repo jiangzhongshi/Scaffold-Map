@@ -20,7 +20,6 @@ matrix:
           packages:
             - xorg-dev
             - libglu1-mesa-dev
-            - gcc-4.8
             - g++-4.8
             - cmake
             - cmake-data
