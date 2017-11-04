@@ -27,7 +27,7 @@ namespace tetgen {
 
 IGL_INLINE int tetrahedralize(const std::vector<std::vector<REAL> > &V,
                               const std::vector<std::vector<int> > &F,
-                              const std::vector<std::vector<REAL> > &H,
+                              const std::vector<std::vector<REAL> > &R,
                               const std::string switches,
                               std::vector<std::vector<REAL> > &TV,
                               std::vector<std::vector<int> > &TT,
@@ -47,7 +47,7 @@ IGL_INLINE int tetrahedralize(const Eigen::PlainObjectBase<
                               const Eigen::PlainObjectBase<
                                   DerivedF> &F,
                               const Eigen::PlainObjectBase<
-                                  DerivedH> &H,
+                                  DerivedH> &R,
                               const std::string switches,
                               Eigen::PlainObjectBase<DerivedTV> &TV,
                               Eigen::PlainObjectBase<DerivedTT> &TT,

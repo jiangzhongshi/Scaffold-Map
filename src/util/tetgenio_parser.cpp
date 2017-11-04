@@ -13,7 +13,8 @@
 
 int igl::dev::tetgen::tetrahedralize(const std::vector<std::vector<REAL> > &V,
                                           const std::vector<std::vector<int> > &F,
-                                          const std::vector<std::vector<REAL> > &H,
+                                          const std::vector<std::vector<REAL>
+                                          > &R,
                                           const std::string switches,
                                           std::vector<std::vector<REAL> > &TV,
                                           std::vector<std::vector<int> > &TT,
@@ -23,17 +24,13 @@ int igl::dev::tetgen::tetrahedralize(const std::vector<std::vector<REAL> > &V,
   tetgenio in, out;
   igl::copyleft::tetgen::mesh_to_tetgenio(V, F, in);
 
-  in.numberofholes = static_cast<int>(H.size());
-  in.holelist = new REAL[in.numberofholes * 3];
-  for (int i = 0; i < in.numberofholes; i++) {
-    assert(H[i].size() == 3);
-    in.holelist[i * 3 + 0] = H[i][0];
-    in.holelist[i * 3 + 1] = H[i][1];
-    in.holelist[i * 3 + 2] = H[i][2];
+  in.numberofregions = static_cast<int>(R.size());
+  in.regionlist = new REAL[in.numberofregions * 5];
+  for(int i=0; i<in.numberofregions; i++) {
+    assert(R[i].size() == 5);
+    for(auto r:{0,1,2,3,4})
+      in.regionlist[i*5+r] = R[i][r];
   }
-
-//  in.numberofregions = 2;
-//  in.regionlist = new REAL[2*3]{0,0,0,9.8,9.8,9.8};
 
   try {
     char *cswitches = new char[switches.size() + 1];
@@ -52,7 +49,7 @@ int igl::dev::tetgen::tetrahedralize(const std::vector<std::vector<REAL> > &V,
     return -1;
   }
   TR.clear();
-  for(int i=0; i<out.numberoftetrahedronattributes; i++)
+  for(int i=0; i<out.numberoftetrahedra; i++)
   {
     TR.push_back(out.tetrahedronattributelist[i]);
   }
@@ -73,23 +70,23 @@ int igl::dev::tetgen::tetrahedralize(const Eigen::PlainObjectBase<
                                           const Eigen::PlainObjectBase<
                                               DerivedF> &F,
                                           const Eigen::PlainObjectBase<
-                                              DerivedH> &H,
+                                              DerivedH> &R,
                                           const std::string switches,
                                           Eigen::PlainObjectBase<DerivedTV> &TV,
                                           Eigen::PlainObjectBase<DerivedTT> &TT,
                                           Eigen::PlainObjectBase<DerivedTF> &TF,
                                           Eigen::PlainObjectBase<DerivedTR> &TR) {
   using namespace std;
-  vector<vector<REAL> > vV, vH, vTV;
+  vector<vector<REAL> > vV, vR, vTV;
   vector<int> vTR;
   vector<vector<int> > vF, vTT, vTF;
   matrix_to_list(V, vV);
   matrix_to_list(F, vF);
-  matrix_to_list(H, vH);
+  matrix_to_list(R, vR);
 
   int e = tetrahedralize(vV,
                          vF,
-                         vH,
+                         vR,
                          switches,
                          vTV,
                          vTT,
@@ -116,3 +113,6 @@ int igl::dev::tetgen::tetrahedralize(const Eigen::PlainObjectBase<
 
 template int igl::dev::tetgen::tetrahedralize<Eigen::Matrix<double, -1, -1, 0,
                                                           -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, 1, 0, -1, 1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >&);
+
+template
+int igl::dev::tetgen::tetrahedralize<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >&);

@@ -10,6 +10,7 @@
 #include <igl/Timer.h>
 #include <igl/massmatrix.h>
 #include <igl/triangle/triangulate.h>
+#include "util/tet_utils.h" 
 #include "util/tetrahedral_improvement.h"
 #include "igl_dev/tetrahedron_tetrahedron_adjacency.h"
 #include "util/tetgenio_parser.h"

@@ -10,6 +10,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <map>
+#include <igl/arap.h>
 
 class ScafData;
 
@@ -141,6 +142,18 @@ private: // utilities
   void compute_jacobians(const Eigen::MatrixXd &V_new) const;
 
   void enlarge_internal_reference(double);
+
+
+public: //arap
+  igl::ARAPData arap_data;
+  Eigen::SparseMatrix<double> CotMat; // semi-negative definite.
+//  Eigen::MatrixXd arap_Bc;
+  std::vector<Eigen::Matrix3d> arap_rots;
+  Eigen::MatrixXd arap_cot_entries;
+  double arap_energy_p = 1e5;
+  double compute_surface_ARAP_energy(const Eigen::MatrixXd &uv) const;
+  void update_surface_ARAP_rots();
+
 };
 
 #endif //SCAFFOLD_TEST_WEIGHTEDSCAFFOLD_H
