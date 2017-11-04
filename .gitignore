@@ -2,7 +2,6 @@
 *.mat
 *.sh
 .idea/
-.vscode/
 CMakeFiles/
 bin/
 build-NOGUI/
