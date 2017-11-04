@@ -18,6 +18,53 @@
 #include <igl/harmonic.h>
 #include <igl/flipped_triangles.h>
 #include <igl/PI.h>
+
+#include "igl/arap.h"
+#include "igl/cat.h"
+#include "igl/doublearea.h"
+#include "igl/grad.h"
+#include "igl/local_basis.h"
+#include "igl/per_face_normals.h"
+#include "igl/slice_into.h"
+#include "igl/serialize.h"
+
+#include <igl/ARAPEnergyType.h>
+#include <igl/covariance_scatter_matrix.h>
+
+
+#include <igl/flip_avoiding_line_search.h>
+#include <igl/boundary_facets.h>
+#include <igl/unique.h>
+#include <igl/slim.h>
+#include <igl/grad.h>
+#include <igl/is_symmetric.h>
+#include <igl/polar_svd.h>
+#include <igl/boundary_loop.h>
+#include <igl/cotmatrix.h>
+#include <igl/edge_lengths.h>
+#include <igl/local_basis.h>
+#include <igl/readOBJ.h>
+#include <igl/repdiag.h>
+#include <igl/vector_area_matrix.h>
+#include <iostream>
+#include <igl/slice.h>
+#include <igl/colon.h>
+
+#include <Eigen/IterativeLinearSolvers>
+#include <Eigen/Sparse>
+#include <Eigen/SparseQR>
+#include <Eigen/SparseCholesky>
+#include <Eigen/IterativeLinearSolvers>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+
+#include <map>
+#include <set>
+#include <vector>
+#include <igl/Timer.h>
+#include <igl/edge_flaps.h>
+#include <igl/arap_linear_block.h>
+
 namespace igl
 {
   namespace scaf
@@ -70,7 +117,6 @@ namespace igl
           VectorXd uv_min = m_uv.colwise().minCoeff();
           VectorXd uv_mid = (uv_max + uv_min) / 2.;
 
-//        double scaf_range = 3;
           Eigen::Array2d scaf_range(3, 3);
           ob.row(0) = uv_mid.array() + scaf_range * ((uv_min - uv_mid).array());
           ob.row(1) = uv_mid.array() + scaf_range * ((uv_max - uv_mid).array());
@@ -162,12 +208,12 @@ namespace igl
       frame << s.w_uv.colwise().maxCoeff(), s.w_uv.colwise().minCoeff();
       bbox << m_uv.colwise().maxCoeff(), m_uv.colwise().minCoeff();
       RowVector2d center = bbox.colwise().mean();
-/*
-  bbox.row(0) -= center;
-  bbox.row(1) -= center;
-  frame.row(0) -= center;
-  frame.row(1) -= center;
-*/
+      /*
+        bbox.row(0) -= center;
+        bbox.row(1) -= center;
+        frame.row(0) -= center;
+        frame.row(1) -= center;
+      */
       struct line_func
       {
         double a, b;
@@ -319,7 +365,7 @@ namespace igl
         if(igl::flipped_triangles(uv_init, F_ref).size() != 0)
         {
           std::cout << "Wrong Choice of Outer bnd:" << std::endl;
-//      assert(false&&"Wrong Choice of outer bnd?");
+        //      assert(false&&"Wrong Choice of outer bnd?");
         }
       }
 
@@ -327,14 +373,14 @@ namespace igl
 
       MatrixXd m_uv = s.w_uv.topRows(s.mv_num);
       igl::cat(1, m_uv, uv_init, s.w_uv);
-//  s.mv_num =  s.w_uv.rows();
+      //  s.mv_num =  s.w_uv.rows();
 
       s.m_M.conservativeResize(s.mf_num + M.size());
       s.m_M.bottomRows(M.size()) = M / 2;
 
-//  internal_bnd.conservativeResize(internal_bnd.size()+ bnd.size());
-//  internal_bnd.bottomRows(bnd.size()) = bnd.array() + s.mv_num;
-//  bnd_sizes.push_back(bnd.size());
+      //  internal_bnd.conservativeResize(internal_bnd.size()+ bnd.size());
+      //  internal_bnd.bottomRows(bnd.size()) = bnd.array() + s.mv_num;
+      //  bnd_sizes.push_back(bnd.size());
 
       for(auto cur_bnd : all_bnds)
       {
@@ -356,6 +402,199 @@ namespace igl
 
       mesh_improve(s);
     }
+
+
+    // functions from ReweightedARAP, a static function
+    void compute_surface_gradient_matrix(
+            const Eigen::MatrixXd &V,
+            const Eigen::MatrixXi &F,
+            const Eigen::MatrixXd &F1,
+            const Eigen::MatrixXd &F2,
+            Eigen::SparseMatrix<double> &D1,
+            Eigen::SparseMatrix<double> &D2) 
+    {
+      Eigen::SparseMatrix<double> G;
+      igl::grad(V, F, G);
+      Eigen::SparseMatrix<double> Dx = G.block(0, 0, F.rows(), V.rows());
+      Eigen::SparseMatrix<double> Dy = G.block(F.rows(), 0, F.rows(), V.rows());
+      Eigen::SparseMatrix<double> Dz = G.block(2 * F.rows(), 0, F.rows(), V.rows());
+
+      D1 = F1.col(0).asDiagonal() * Dx + F1.col(1).asDiagonal() * Dy +
+           F1.col(2).asDiagonal() * Dz;
+      D2 = F2.col(0).asDiagonal() * Dx + F2.col(1).asDiagonal() * Dy +
+           F2.col(2).asDiagonal() * Dz;
+    }
+
+
+        template<typename DerivedV, typename DerivedF>
+        inline void adjusted_grad(const Eigen::MatrixBase<DerivedV> &V,
+                                  const Eigen::MatrixBase<DerivedF> &F,
+                                  Eigen::SparseMatrix<typename DerivedV::Scalar> &G,
+                                  double eps) {
+          Eigen::Matrix<typename DerivedV::Scalar, Eigen::Dynamic, 3>
+                  eperp21(F.rows(), 3), eperp13(F.rows(), 3);
+          int fixed = 0;
+          for (int i = 0; i < F.rows(); ++i) {
+            // renaming indices of vertices of triangles for convenience
+            int i1 = F(i, 0);
+            int i2 = F(i, 1);
+            int i3 = F(i, 2);
+
+            // #F x 3 matrices of triangle edge vectors, named after opposite vertices
+            Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v32 = V.row(i3) - V.row(i2);
+            Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v13 = V.row(i1) - V.row(i3);
+            Eigen::Matrix<typename DerivedV::Scalar, 1, 3> v21 = V.row(i2) - V.row(i1);
+            Eigen::Matrix<typename DerivedV::Scalar, 1, 3> n = v32.cross(v13);
+            // area of parallelogram is twice area of triangle
+            // area of parallelogram is || v1 x v2 ||
+            // This does correct l2 norm of rows, so that it contains #F list of twice
+            // triangle areas
+            double dblA = std::sqrt(n.dot(n));
+            Eigen::Matrix<typename DerivedV::Scalar, 1, 3> u;
+            if (dblA > eps) {
+              // now normalize normals to get unit normals
+              u = n / dblA;
+            } else {
+              // Abstract equilateral triangle v1=(0,0), v2=(h,0), v3=(h/2, (sqrt(3)/2)*h)
+              fixed ++;
+              // get h (by the area of the triangle)
+              dblA = eps;
+              double h = sqrt((dblA) / sin(
+                      M_PI / 3.0)); // (h^2*sin(60))/2. = Area => h = sqrt(2*Area/sin_60)
+
+              Eigen::Vector3d v1, v2, v3;
+              v1 << 0, 0, 0;
+              v2 << h, 0, 0;
+              v3 << h / 2., (sqrt(3) / 2.) * h, 0;
+
+              // now fix v32,v13,v21 and the normal
+              v32 = v3 - v2;
+              v13 = v1 - v3;
+              v21 = v2 - v1;
+              n = v32.cross(v13);
+            }
+
+            // rotate each vector 90 degrees around normal
+            double norm21 = std::sqrt(v21.dot(v21));
+            double norm13 = std::sqrt(v13.dot(v13));
+            eperp21.row(i) = u.cross(v21);
+            eperp21.row(i) =
+                    eperp21.row(i) / std::sqrt(eperp21.row(i).dot(eperp21.row(i)));
+            eperp21.row(i) *= norm21 / dblA;
+            eperp13.row(i) = u.cross(v13);
+            eperp13.row(i) =
+                    eperp13.row(i) / std::sqrt(eperp13.row(i).dot(eperp13.row(i)));
+            eperp13.row(i) *= norm13 / dblA;
+          }
+
+          std::vector<int> rs;
+          rs.reserve(F.rows() * 4 * 3);
+          std::vector<int> cs;
+          cs.reserve(F.rows() * 4 * 3);
+          std::vector<double> vs;
+          vs.reserve(F.rows() * 4 * 3);
+
+          // row indices
+          for (int r = 0; r < 3; r++) {
+            for (int j = 0; j < 4; j++) {
+              for (int i = r * F.rows(); i < (r + 1) * F.rows(); i++) rs.push_back(i);
+            }
+          }
+
+          // column indices
+          for (int r = 0; r < 3; r++) {
+            for (int i = 0; i < F.rows(); i++) cs.push_back(F(i, 1));
+            for (int i = 0; i < F.rows(); i++) cs.push_back(F(i, 0));
+            for (int i = 0; i < F.rows(); i++) cs.push_back(F(i, 2));
+            for (int i = 0; i < F.rows(); i++) cs.push_back(F(i, 0));
+          }
+
+          // values
+          for (int i = 0; i < F.rows(); i++) vs.push_back(eperp13(i, 0));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(-eperp13(i, 0));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(eperp21(i, 0));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(-eperp21(i, 0));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(eperp13(i, 1));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(-eperp13(i, 1));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(eperp21(i, 1));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(-eperp21(i, 1));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(eperp13(i, 2));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(-eperp13(i, 2));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(eperp21(i, 2));
+          for (int i = 0; i < F.rows(); i++) vs.push_back(-eperp21(i, 2));
+
+          // create sparse gradient operator matrix
+          G.resize(3 * F.rows(), V.rows());
+          std::vector<Eigen::Triplet<typename DerivedV::Scalar> > triplets;
+          for (int i = 0; i < (int) vs.size(); ++i) {
+            triplets.push_back(Eigen::Triplet<typename DerivedV::Scalar>(rs[i],
+                                                                         cs[i],
+                                                                         vs[i]));
+          }
+          G.setFromTriplets(triplets.begin(), triplets.end());
+          //  std::cout<<"Adjusted"<<fixed<<std::endl;
+        };
+
+      void simplified_covariance_scatter_matrix(
+              const Eigen::MatrixXd & V,
+              const Eigen::MatrixXi & F,
+              Eigen::SparseMatrix<double>& Dx,Eigen::SparseMatrix<double>& Dy,
+              Eigen::SparseMatrix<double>& Dz) {
+        using namespace Eigen;
+        auto energy = igl::ARAP_ENERGY_TYPE_SPOKES_AND_RIMS;
+        SparseMatrix<double> Kx,Ky,Kz;
+        igl::arap_linear_block(V,F,0,energy,Kx);
+        igl::arap_linear_block(V,F,1,energy,Ky);
+        igl::arap_linear_block(V,F,2,energy,Kz);
+        Dx = Kx.transpose();
+        Dy = Ky.transpose();
+        Dz = Kz.transpose();
+      }
+
+      void compute_scaffold_gradient_matrix( SCAFData& d_,
+              Eigen::SparseMatrix<double> &D1, Eigen::SparseMatrix<double> &D2) 
+              {
+        using namespace Eigen;
+        Eigen::SparseMatrix<double> G;
+        MatrixXi F_s = d_.s_T;
+        int vn = d_.v_num;
+        MatrixXd V = MatrixXd::Zero(vn, 3);
+        V.leftCols(2) = d_.w_uv;
+        //  std::cout<<"Avg Mesh Area"<<d_.mesh_measure/d_.mv_num<<std::endl;
+
+        double min_bnd_edge_len = INFINITY;
+        int acc_bnd = 0;
+        for(int i=0; i<d_.bnd_sizes.size(); i++) {
+          int current_size = d_.bnd_sizes[i];
+
+          for(int e=acc_bnd; e<acc_bnd + current_size - 1; e++) {
+            min_bnd_edge_len = std::min(min_bnd_edge_len,
+                                        (d_.w_uv.row(d_.internal_bnd(e)) -
+                                         d_.w_uv.row(d_.internal_bnd(e+1)))
+                                                .squaredNorm());
+          }
+          min_bnd_edge_len = std::min(min_bnd_edge_len,
+                                      (d_.w_uv.row(d_.internal_bnd(acc_bnd)) -
+                                       d_.w_uv.row(d_.internal_bnd(acc_bnd +current_size -
+                                                                   1))).squaredNorm());
+          acc_bnd += current_size;
+        }
+
+        //  std::cout<<"MinBndEdge"<<min_bnd_edge_len<<std::endl;
+        double area_threshold = min_bnd_edge_len/4.0;
+
+        adjusted_grad(V, F_s, G, area_threshold);
+        Eigen::SparseMatrix<double> Dx = G.block(0, 0, F_s.rows(), vn);
+        Eigen::SparseMatrix<double> Dy = G.block(F_s.rows(), 0, F_s.rows(), vn);
+        Eigen::SparseMatrix<double> Dz = G.block(2 * F_s.rows(), 0, F_s.rows(), vn);
+
+        MatrixXd F1, F2, F3;
+        igl::local_basis(V, F_s, F1, F2, F3);
+        D1 = F1.col(0).asDiagonal() * Dx + F1.col(1).asDiagonal() * Dy +
+             F1.col(2).asDiagonal() * Dz;
+        D2 = F2.col(0).asDiagonal() * Dx + F2.col(1).asDiagonal() * Dy +
+             F2.col(2).asDiagonal() * Dz;
+      }
   }
 
 }
@@ -369,45 +608,114 @@ IGL_INLINE void igl::scaf_precompute(
 {
   igl::scaf::add_new_patch(data, V, F, Eigen::RowVector2d(0,0));
   data.soft_const_p = soft_p;
+
+  using namespace Eigen;
+
+  auto &d_ = data;
+  auto & Dx_m = data.Dx_m;
+  auto & Dy_m = data.Dy_m;
+  auto & Dz_m = data.Dz_m;
+  auto & Dx_s = data.Dx_s;
+  auto & Dy_s = data.Dy_s;
+  auto & Dz_s = data.Dz_s;
+  auto & Ri_m = data.Ri_m;
+  auto & Ji_m = data.Ji_m;
+  auto & Ri_s = data.Ri_s;
+  auto & Ji_s = data.Ji_s;
+  auto & W_m = data.W_m;
+  auto & W_s = data.W_s;
+
+    if (!data.has_pre_calc) {
+        int mv_n = d_.mv_num;
+        int mf_n = d_.mf_num;
+        int sv_n = d_.sv_num;
+        int sf_n = d_.sf_num;
+
+        int v_n = mv_n + sv_n;
+        int f_n = mf_n + sf_n;
+        if (d_.dim == 2) {
+            Eigen::MatrixXd F1, F2, F3;
+            igl::local_basis(d_.m_V, d_.m_T, F1, F2, F3);
+            igl::scaf::compute_surface_gradient_matrix(d_.m_V, d_.m_T, F1, F2, Dx_m,
+                                            Dy_m);
+
+            igl::scaf::compute_scaffold_gradient_matrix(d_, Dx_s, Dy_s);
+        } else {
+
+            if(d_.m_T.cols() == 3) {
+                igl::scaf::simplified_covariance_scatter_matrix(d_.m_V, d_.m_T,
+                                                     Dx_m, Dy_m, Dz_m);
+            } else {
+                Eigen::SparseMatrix<double> Gm;
+                igl::grad(d_.m_V, d_.m_T, Gm);
+
+                Dx_m = Gm.block(0, 0, mf_n, mv_n);
+                Dy_m = Gm.block(mf_n, 0, mf_n, mv_n);
+                Dz_m = Gm.block(2 * mf_n, 0, mf_n, mv_n);
+            }
+
+            Eigen::SparseMatrix<double> Gs;
+            igl::grad(d_.w_uv, d_.s_T, Gs);
+
+            Dx_s = Gs.block(0, 0, sf_n, v_n);
+            Dy_s = Gs.block(sf_n, 0, sf_n, v_n);
+            Dz_s = Gs.block(2 * sf_n, 0, sf_n, v_n);
+        }
+        int dim = d_.dim;
+
+        Dx_m.makeCompressed();
+        Dy_m.makeCompressed();
+        Dz_m.makeCompressed();
+        Ri_m = MatrixXd::Zero(Dx_m.rows(), dim * dim);
+        Ji_m.resize(Dx_m.rows(), dim * dim);
+        W_m.resize(Dx_m.rows(), dim * dim);
+
+        Dx_s.makeCompressed();
+        Dy_s.makeCompressed();
+        Dz_s.makeCompressed();
+        Ri_s = MatrixXd::Zero(Dx_s.rows(), dim * dim);
+        Ji_s.resize(Dx_s.rows(), dim * dim);
+        W_s.resize(Dx_s.rows(), dim * dim);
+
+        data.has_pre_calc = true;
+    }
 }
 
-IGL_INLINE Eigen::MatrixXd igl::scaf_solve(SCAFData &data, int iter_num){
+IGL_INLINE Eigen::MatrixXd igl::scaf_solve(SCAFData &d_, int iter_num) 
+{
   using namespace std;
   using namespace Eigen;
-  auto &d_ = data;
-  auto &ws = wssolver;
-  double last_mesh_energy =  ws->compute_energy(d_.w_uv, false) / d_.mesh_measure;
-  std::cout<<"Initial Energy"<<last_mesh_energy<<std::endl;
-  cout << "Initial V_num: "<<d_.mv_num<<" F_num: "<<d_.mf_num<<endl;
-  d_.energy = ws->compute_energy(d_.w_uv, true) / d_.mesh_measure;
-    igl::Timer timer;
+  //  auto &ws = wssolver;
+  double last_mesh_energy = compute_energy(d_, false) / d_.mesh_measure;
+  std::cout << "Initial Energy" << last_mesh_energy << std::endl;
+  cout << "Initial V_num: " << d_.mv_num << " F_num: " << d_.mf_num << endl;
+  d_.energy = compute_energy(d_, true) / d_.mesh_measure;
 
-    timer.start();
+  igl::Timer timer;
+  timer.start();
 
-    ws->mesh_improve();
+  igl::scaf::mesh_improve(d_);
 
-    double new_weight = d_.mesh_measure * last_mesh_energy / (d_.sf_num*100 );
-    ws->adjust_scaf_weight(new_weight);
+  double new_weight = d_.mesh_measure * last_mesh_energy / (d_.sf_num * 100);
+  adjust_scaf_weight(d_, new_weight);
 
-    d_.energy = ws->perform_iteration(d_.w_uv);
+  d_.energy = perform_iteration(d_);
 
-    cout<<"Iteration time = "<<timer.getElapsedTime()<<endl;
-    double current_mesh_energy =
-        ws->compute_energy(d_.w_uv, false) / d_.mesh_measure - 4;
-    double mesh_energy_decrease = last_mesh_energy - current_mesh_energy;
-    cout << "Energy After:"
-         << d_.energy - 4
-         << "\tMesh Energy:"
-         << current_mesh_energy
-         << "\tEnergy Decrease"
-         << mesh_energy_decrease
-         << endl;
-    cout << "V_num: "<<d_.v_num<<" F_num: "<<d_.f_num<<endl;
-    last_mesh_energy = current_mesh_energy;
-  }
+  cout << "Iteration time = " << timer.getElapsedTime() << endl;
+  double current_mesh_energy =
+          compute_energy(d_, false) / d_.mesh_measure - 4;
+  double mesh_energy_decrease = last_mesh_energy - current_mesh_energy;
+  cout << "Energy After:"
+       << d_.energy - 4
+       << "\tMesh Energy:"
+       << current_mesh_energy
+       << "\tEnergy Decrease"
+       << mesh_energy_decrease
+       << endl;
+  cout << "V_num: " << d_.v_num << " F_num: " << d_.f_num << endl;
+  last_mesh_energy = current_mesh_energy;
 
-  Eigen::MatrixXd wuv3 = Eigen::MatrixXd::Zero(d_.v_num,3);
+  Eigen::MatrixXd wuv3 = Eigen::MatrixXd::Zero(d_.v_num, 3);
   wuv3.leftCols(2) = d_.w_uv;
-  
 
 }

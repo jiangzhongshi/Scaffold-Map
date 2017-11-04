@@ -64,7 +64,14 @@ namespace igl
       void add_soft_constraints(const Eigen::VectorXi &b,
                                 const Eigen::MatrixXd &bc);
       void update_scaffold();*/
+        // reweightedARAP interior variables.
+        bool has_pre_calc = false;
+        Eigen::SparseMatrix<double> Dx_s, Dy_s, Dz_s;
+        Eigen::SparseMatrix<double> Dx_m, Dy_m, Dz_m;
+        Eigen::MatrixXd Ri_m, Ji_m, Ri_s, Ji_s;
+        Eigen::MatrixXd W_m, W_s;
     };
+
 
 // Compute necessary information to start using SCAF
 // Inputs:
