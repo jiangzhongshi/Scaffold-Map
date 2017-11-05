@@ -622,7 +622,7 @@ void compute_scaffold_gradient_matrix(SCAFData &d_,
        F2.col(2).asDiagonal() * Dz;
 }
 
-void compute_jacobians(SCAFData &d_, bool whole)
+void compute_jacobians(SCAFData &d_, const Eigen::MatrixXd &V_new, bool whole)
 {
   auto comp_J2 = [](const Eigen::MatrixXd &uv,
                     const Eigen::SparseMatrix<double> &Dx,
@@ -652,7 +652,6 @@ void compute_jacobians(SCAFData &d_, bool whole)
     Ji.col(7) = Dy * uv.col(2);
     Ji.col(8) = Dz * uv.col(2);
   };
-  auto V_new = d_.w_uv;
   Eigen::MatrixXd m_V_new = V_new.topRows(d_.mv_num);
   if (d_.dim == 2)
   {
@@ -668,9 +667,14 @@ void compute_jacobians(SCAFData &d_, bool whole)
   }
 }
 
+void compute_jacobians(SCAFData &d_, bool whole)
+{
+  compute_jacobians(d_, d_.w_uv, whole);
+}
+
 double compute_energy_from_jacobians(const Eigen::MatrixXd &Ji,
-                                   const Eigen::VectorXd &areas,
-                                   igl::SLIMData::SLIM_ENERGY energy_type)
+                                     const Eigen::VectorXd &areas,
+                                     igl::SLIMData::SLIM_ENERGY energy_type)
 {
   double energy = 0;
   int dim = Ji.cols() == 4 ? 2 : 3;
@@ -779,10 +783,10 @@ double compute_energy_from_jacobians(const Eigen::MatrixXd &Ji,
   return energy;
 }
 
-double compute_soft_constraint_energy(const SCAFData& d_) 
+double compute_soft_constraint_energy(const SCAFData &d_)
 {
   double e = 0;
-  for (auto const &x:d_.soft_cons)
+  for (auto const &x : d_.soft_cons)
     e += d_.soft_const_p * (x.second - d_.w_uv.row(x.first)).squaredNorm();
 
   return e;
@@ -793,38 +797,840 @@ double compute_energy(SCAFData &d_, bool whole)
   compute_jacobians(d_, whole);
   double energy = compute_energy_from_jacobians(d_.Ji_m, d_.m_M, d_.slim_energy);
 
-  if (whole) 
-   energy += compute_energy_from_jacobians(d_.Ji_s, d_.s_M, d_.scaf_energy);
+  if (whole)
+    energy += compute_energy_from_jacobians(d_.Ji_s, d_.s_M, d_.scaf_energy);
   energy += compute_soft_constraint_energy(d_);
   return energy;
 }
 
-void adjust_scaf_weight(SCAFData &d_, double new_weight) 
+double compute_energy(SCAFData &d_, Eigen::MatrixXd &w_uv)
+{
+  bool whole = w_uv.rows() == d_.v_num;
+  compute_jacobians(d_, w_uv, whole);
+  double energy = compute_energy_from_jacobians(d_.Ji_m, d_.m_M, d_.slim_energy);
+
+  if (whole)
+    energy += compute_energy_from_jacobians(d_.Ji_s, d_.s_M, d_.scaf_energy);
+  energy += compute_soft_constraint_energy(d_);
+  return energy;
+}
+
+void adjust_scaf_weight(SCAFData &d_, double new_weight)
 {
   d_.scaffold_factor = new_weight;
   update_scaffold(d_);
 }
-/*
-void perform_iteration(SCAFData &d_) 
+
+template <int dim>
+void update_weights_and_closest_rotations(
+    const Eigen::MatrixXd &Ji,
+    igl::SLIMData::SLIM_ENERGY energy_type,
+    Eigen::MatrixXd &W,
+    Eigen::MatrixXd &Ri);
+
+template <>
+void update_weights_and_closest_rotations<2>(
+    const Eigen::MatrixXd &Ji,
+    igl::SLIMData::SLIM_ENERGY energy_type,
+    Eigen::MatrixXd &W,
+    Eigen::MatrixXd &Ri)
 {
-  auto & w_uv = d_.w_uv;
+  const double eps = 1e-8;
+
+  W.resize(Ji.rows(), 4);
+  Ri.resize(Ji.rows(), 4);
+  for (int i = 0; i < Ji.rows(); ++i)
+  {
+    typedef Eigen::Matrix<double, 2, 2> Mat2;
+    typedef Eigen::Matrix<double, 2, 1> Vec2;
+    Mat2 ji, ri, ti, ui, vi;
+    Vec2 sing;
+    Vec2 closest_sing_vec;
+    Mat2 mat_W;
+    Vec2 m_sing_new;
+    double s1, s2;
+
+    ji(0, 0) = Ji(i, 0);
+    ji(0, 1) = Ji(i, 1);
+    ji(1, 0) = Ji(i, 2);
+    ji(1, 1) = Ji(i, 3);
+
+    igl::polar_svd(ji, ri, ti, ui, sing, vi);
+
+    s1 = sing(0);
+    s2 = sing(1);
+
+    // Branch between mesh face and scaffold faces.
+    switch (energy_type)
+    {
+    case igl::SLIMData::ARAP:
+    {
+      m_sing_new << 1, 1;
+      break;
+    }
+    case igl::SLIMData::SYMMETRIC_DIRICHLET:
+    {
+      double s1_g = 2 * (s1 - pow(s1, -3));
+      double s2_g = 2 * (s2 - pow(s2, -3));
+      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
+                                                     s2_g / (2 * (s2 - 1)));
+      break;
+    }
+    case igl::SLIMData::LOG_ARAP:
+    {
+      double s1_g = 2 * (log(s1) / s1);
+      double s2_g = 2 * (log(s2) / s2);
+      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
+                                                     s2_g / (2 * (s2 - 1)));
+      break;
+    }
+    case igl::SLIMData::CONFORMAL:
+    {
+      double s1_g = 1 / (2 * s2) - s2 / (2 * pow(s1, 2));
+      double s2_g = 1 / (2 * s1) - s1 / (2 * pow(s2, 2));
+
+      double geo_avg = sqrt(s1 * s2);
+      double s1_min = geo_avg;
+      double s2_min = geo_avg;
+
+      m_sing_new << sqrt(s1_g / (2 * (s1 - s1_min))), sqrt(
+                                                          s2_g / (2 * (s2 - s2_min)));
+
+      // change local step
+      closest_sing_vec << s1_min, s2_min;
+      ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
+      break;
+    }
+    default:
+      break;
+    }
+
+    if (abs(s1 - 1) < eps)
+      m_sing_new(0) = 1;
+    if (abs(s2 - 1) < eps)
+      m_sing_new(1) = 1;
+
+    mat_W = ui * m_sing_new.asDiagonal() * ui.transpose();
+
+    W(i, 0) = mat_W(0, 0);
+    W(i, 1) = mat_W(0, 1);
+    W(i, 2) = mat_W(1, 0);
+    W(i, 3) = mat_W(1, 1);
+
+    // 2) Update local step (doesn't have to be a rotation, for instance in case of conformal energy)
+    Ri(i, 0) = ri(0, 0);
+    Ri(i, 1) = ri(1, 0);
+    Ri(i, 2) = ri(0, 1);
+    Ri(i, 3) = ri(1, 1);
+  }
+}
+
+template <>
+void update_weights_and_closest_rotations<3>(
+    const Eigen::MatrixXd &Ji,
+    igl::SLIMData::SLIM_ENERGY energy_type,
+    Eigen::MatrixXd &W,
+    Eigen::MatrixXd &Ri)
+{
+  const double eps = 1e-8;
+
+  typedef Eigen::Matrix<double, 3, 1> Vec3;
+  typedef Eigen::Matrix<double, 3, 3> Mat3;
+  Mat3 ji;
+  Vec3 m_sing_new;
+  Vec3 closest_sing_vec;
+  const double sqrt_2 = sqrt(2);
+
+  W.resize(Ji.rows(), 9);
+  Ri.resize(Ji.rows(), 9);
+  for (int i = 0; i < Ji.rows(); ++i)
+  {
+    ji(0, 0) = Ji(i, 0);
+    ji(0, 1) = Ji(i, 1);
+    ji(0, 2) = Ji(i, 2);
+    ji(1, 0) = Ji(i, 3);
+    ji(1, 1) = Ji(i, 4);
+    ji(1, 2) = Ji(i, 5);
+    ji(2, 0) = Ji(i, 6);
+    ji(2, 1) = Ji(i, 7);
+    ji(2, 2) = Ji(i, 8);
+
+    Mat3 ri, ti, ui, vi;
+    Vec3 sing;
+    igl::polar_svd(ji, ri, ti, ui, sing, vi);
+
+    double s1 = sing(0);
+    double s2 = sing(1);
+    double s3 = sing(2);
+
+    // 1) Update Weights
+    switch (energy_type)
+    {
+    case igl::SLIMData::ARAP:
+    {
+      m_sing_new << 1, 1, 1;
+      break;
+    }
+    case igl::SLIMData::LOG_ARAP:
+    {
+      double s1_g = 2 * (log(s1) / s1);
+      double s2_g = 2 * (log(s2) / s2);
+      double s3_g = 2 * (log(s3) / s3);
+      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
+                                                     s2_g / (2 * (s2 - 1))),
+          sqrt(s3_g / (2 * (s3 - 1)));
+      break;
+    }
+    case igl::SLIMData::SYMMETRIC_DIRICHLET:
+    {
+      double s1_g = 2 * (s1 - pow(s1, -3));
+      double s2_g = 2 * (s2 - pow(s2, -3));
+      double s3_g = 2 * (s3 - pow(s3, -3));
+      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
+                                                     s2_g / (2 * (s2 - 1))),
+          sqrt(s3_g / (2 * (s3 - 1)));
+      break;
+    }
+
+    case igl::SLIMData::CONFORMAL:
+    {
+      double common_div = 9 * (pow(s1 * s2 * s3, 5. / 3.));
+
+      double s1_g =
+          (-2 * s2 * s3 * (pow(s2, 2) + pow(s3, 2) - 2 * pow(s1, 2))) / common_div;
+      double s2_g =
+          (-2 * s1 * s3 * (pow(s1, 2) + pow(s3, 2) - 2 * pow(s2, 2))) / common_div;
+      double s3_g =
+          (-2 * s1 * s2 * (pow(s1, 2) + pow(s2, 2) - 2 * pow(s3, 2))) / common_div;
+
+      double closest_s = sqrt(pow(s1, 2) + pow(s3, 2)) / sqrt_2;
+      double s1_min = closest_s;
+      double s2_min = closest_s;
+      double s3_min = closest_s;
+
+      m_sing_new << sqrt(s1_g / (2 * (s1 - s1_min))), sqrt(
+                                                          s2_g / (2 * (s2 - s2_min))),
+          sqrt(
+              s3_g / (2 * (s3 - s3_min)));
+
+      // change local step
+      closest_sing_vec << s1_min, s2_min, s3_min;
+      ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
+      break;
+    }
+    }
+    if (std::abs(s1 - 1) < eps)
+      m_sing_new(0) = 1;
+    if (std::abs(s2 - 1) < eps)
+      m_sing_new(1) = 1;
+    if (std::abs(s3 - 1) < eps)
+      m_sing_new(2) = 1;
+    Mat3 mat_W;
+    mat_W = ui * m_sing_new.asDiagonal() * ui.transpose();
+
+    W(i, 0) = mat_W(0, 0);
+    W(i, 1) = mat_W(0, 1);
+    W(i, 2) = mat_W(0, 2);
+    W(i, 3) = mat_W(1, 0);
+    W(i, 4) = mat_W(1, 1);
+    W(i, 5) = mat_W(1, 2);
+    W(i, 6) = mat_W(2, 0);
+    W(i, 7) = mat_W(2, 1);
+    W(i, 8) = mat_W(2, 2);
+
+    // 2) Update closest rotations (not rotations in case of conformal energy)
+    Ri(i, 0) = ri(0, 0);
+    Ri(i, 1) = ri(1, 0);
+    Ri(i, 2) = ri(2, 0);
+    Ri(i, 3) = ri(0, 1);
+    Ri(i, 4) = ri(1, 1);
+    Ri(i, 5) = ri(2, 1);
+    Ri(i, 6) = ri(0, 2);
+    Ri(i, 7) = ri(1, 2);
+    Ri(i, 8) = ri(2, 2);
+  }
+}
+
+void build_surface_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double> &L, Eigen::VectorXd &rhs)
+{
+
+  using namespace Eigen;
+  using namespace std;
+
+  const int v_n = d_.v_num - (d_.frame_ids.size());
+  const int dim = d_.dim;
+  const int f_n = d_.mf_num;
+
+  // to get the  complete A
+  Eigen::VectorXd sqrtM = d_.m_M.array().sqrt();
+  Eigen::SparseMatrix<double> A(dim * dim * f_n, dim * v_n);
+  auto decoy_Dx_m = d_.Dx_m;
+  decoy_Dx_m.conservativeResize(d_.W_m.rows(), v_n);
+  auto decoy_Dy_m = d_.Dy_m;
+  decoy_Dy_m.conservativeResize(d_.W_m.rows(), v_n);
+  if (dim == 2)
+  {
+    buildAm(sqrtM, decoy_Dx_m, decoy_Dy_m, d_.W_m, A);
+  }
+  else
+  {
+    auto decoy_Dz_m = d_.Dz_m;
+    decoy_Dz_m.conservativeResize(d_.W_m.rows(), v_n);
+    buildAm(sqrtM, decoy_Dx_m, decoy_Dy_m, decoy_Dz_m, d_.W_m, A);
+  }
+
+  Eigen::SparseMatrix<double> At = A.transpose();
+  At.makeCompressed();
+
+  Eigen::SparseMatrix<double> id_m(At.rows(), At.rows());
+  id_m.setIdentity();
+
+  L = At * A;
+
+  Eigen::VectorXd frhs;
+  buildRhs(sqrtM, d_.W_m, d_.Ri_m, frhs);
+  rhs = At * frhs;
+
+  // add soft constraints.
+  for (auto const &x : d_.soft_cons)
+  {
+    int v_idx = x.first;
+
+    for (int d = 0; d < dim; d++)
+    {
+      rhs(d * (v_n) + v_idx) += d_.soft_const_p * x.second(d); // rhs
+      L.coeffRef(d * v_n + v_idx,
+                 d * v_n + v_idx) += d_.soft_const_p; // diagonal
+    }
+  }
+}
+
+void build_scaffold_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double> &L, Eigen::VectorXd &rhs)
+{
+  using namespace Eigen;
+
+  const int f_n = d_.W_s.rows();
+  const int v_n = d_.Dx_s.cols();
+  const int dim = d_.dim;
+
+  Eigen::VectorXd sqrtM = d_.s_M.array().sqrt();
+  Eigen::SparseMatrix<double> A(dim * dim * f_n, dim * v_n);
+  if (dim == 2)
+    buildAm(sqrtM, d_.Dx_s, d_.Dy_s, d_.W_s, A);
+  else
+    buildAm(sqrtM, d_.Dx_s, d_.Dy_s, d_.Dz_s, d_.W_s, A);
+
+  const VectorXi &bnd_ids = d_.frame_ids;
+
+  auto bnd_n = bnd_ids.size();
+  assert(bnd_n > 0);
+  MatrixXd bnd_pos;
+  igl::slice(d_.w_uv, bnd_ids, 1, bnd_pos);
+
+  ArrayXi known_ids(bnd_ids.size() * dim);
+  ArrayXi unknown_ids((v_n - bnd_ids.rows()) * dim);
+
+  { // get the complement of bnd_ids.
+    int assign = 0, i = 0;
+    for (int get = 0; i < v_n && get < bnd_ids.size(); i++)
+    {
+      if (bnd_ids(get) == i)
+        get++;
+      else
+        unknown_ids(assign++) = i;
+    }
+    while (i < v_n)
+      unknown_ids(assign++) = i++;
+    assert(assign + bnd_ids.size() == v_n);
+  }
+
+  VectorXd known_pos(bnd_ids.size() * dim);
+  for (int d = 0; d < dim; d++)
+  {
+    auto n_b = bnd_ids.rows();
+    known_ids.segment(d * n_b, n_b) = bnd_ids.array() + d * v_n;
+    known_pos.segment(d * n_b, n_b) = bnd_pos.col(d);
+    unknown_ids.block(d * (v_n - n_b), 0, v_n - n_b, unknown_ids.cols()) =
+        unknown_ids.topRows(v_n - n_b) + d * v_n;
+  }
+  Eigen::VectorXd sqrt_M = d_.s_M.array().sqrt();
+
+  // slice
+  // 'manual slicing for A(:, unknown/known)'
+  Eigen::SparseMatrix<double> Au, Ae;
+  {
+    using TY = double;
+    using TX = double;
+    auto &X = A;
+
+    int xm = X.rows();
+    int xn = X.cols();
+    int ym = xm;
+    int yn = unknown_ids.size();
+    int ykn = known_ids.size();
+
+    std::vector<int> CI(xn, -1);
+    std::vector<int> CKI(xn, -1);
+    // initialize to -1
+    for (int i = 0; i < yn; i++)
+      CI[unknown_ids(i)] = (i);
+    for (int i = 0; i < ykn; i++)
+      CKI[known_ids(i)] = i;
+    Eigen::DynamicSparseMatrix<TY, Eigen::ColMajor> dyn_Y(ym, yn);
+    Eigen::DynamicSparseMatrix<TY, Eigen::ColMajor> dyn_K(ym, ykn);
+    // Take a guess at the number of nonzeros (this assumes uniform distribution
+    // not banded or heavily diagonal)
+    dyn_Y.reserve(A.nonZeros());
+    dyn_K.reserve(A.nonZeros() * ykn / xn);
+    // Iterate over outside
+    for (int k = 0; k < X.outerSize(); ++k)
+    {
+      // Iterate over inside
+      if (CI[k] != -1)
+        for (typename Eigen::SparseMatrix<TX>::InnerIterator it(X, k); it;
+             ++it)
+        {
+          dyn_Y.coeffRef(it.row(), CI[it.col()]) = it.value();
+        }
+      else
+        for (typename Eigen::SparseMatrix<TX>::InnerIterator it(X, k); it;
+             ++it)
+        {
+          dyn_K.coeffRef(it.row(), CKI[it.col()]) = it.value();
+        }
+    }
+    Au = Eigen::SparseMatrix<TY>(dyn_Y);
+    Ae = Eigen::SparseMatrix<double>(dyn_K);
+  }
+
+  Eigen::SparseMatrix<double> Aut = Au.transpose();
+  Aut.makeCompressed();
+
+  Eigen::SparseMatrix<double> id(Aut.rows(), Aut.rows());
+  id.setIdentity();
+
+  L = Aut * Au;
+
+  Eigen::VectorXd frhs;
+  buildRhs(sqrtM, d_.W_s, d_.Ri_s, frhs);
+
+  rhs = Aut * (frhs - Ae * known_pos);
+}
+
+void buildAm(const Eigen::VectorXd &sqrt_M,
+             const Eigen::SparseMatrix<double> &Dx,
+             const Eigen::SparseMatrix<double> &Dy,
+             const Eigen::MatrixXd &W,
+             Eigen::SparseMatrix<double> &Am)
+{
+  using namespace Eigen;
+  // formula (35) in paper
+  std::vector<Triplet<double>> IJV;
+  const int f_n = W.rows();
+  const int v_n = Dx.cols();
+
+  IJV.reserve(4 * (Dx.outerSize() + Dy.outerSize()));
+
+  /*A = [W11*Dx, W12*Dx;
+  W11*Dy, W12*Dy;
+  W21*Dx, W22*Dx;
+  W21*Dy, W22*Dy];*/
+  for (int k = 0; k < Dx.outerSize(); ++k)
+  {
+    for (SparseMatrix<double>::InnerIterator it(Dx, k); it; ++it)
+    {
+      int dx_r = it.row();
+      int dx_c = it.col();
+      double val = it.value() * sqrt_M(dx_r);
+
+      IJV.push_back(Triplet<double>(dx_r, dx_c, val * W(dx_r, 0)));
+      IJV.push_back(Triplet<double>(dx_r, v_n + dx_c, val * W(dx_r, 1)));
+
+      IJV.push_back(Triplet<double>(2 * f_n + dx_r, dx_c, val * W(dx_r, 2)));
+      IJV.push_back(
+          Triplet<double>(2 * f_n + dx_r, v_n + dx_c, val * W(dx_r, 3)));
+    }
+  }
+
+  for (int k = 0; k < Dy.outerSize(); ++k)
+  {
+    for (SparseMatrix<double>::InnerIterator it(Dy, k); it; ++it)
+    {
+      int dy_r = it.row();
+      int dy_c = it.col();
+      double val = it.value() * sqrt_M(dy_r);
+
+      IJV.push_back(Triplet<double>(f_n + dy_r, dy_c,
+                                    val * W(dy_r, 0)));
+      IJV.push_back(Triplet<double>(f_n + dy_r, v_n + dy_c,
+                                    val * W(dy_r, 1)));
+
+      IJV.push_back(Triplet<double>(3 * f_n + dy_r, dy_c,
+                                    val * W(dy_r, 2)));
+      IJV.push_back(Triplet<double>(3 * f_n + dy_r, v_n + dy_c,
+                                    val * W(dy_r, 3)));
+    }
+  }
+  Am.setFromTriplets(IJV.begin(), IJV.end());
+}
+
+void buildAm(const Eigen::VectorXd &sqrt_M,
+                             const Eigen::SparseMatrix<double> &Dx,
+                             const Eigen::SparseMatrix<double> &Dy,
+                             const Eigen::SparseMatrix<double> &Dz,
+                             const Eigen::MatrixXd &W,
+                             Eigen::SparseMatrix<double> &Am)
+{
+  using namespace Eigen;
+  // formula (35) in paper
+  std::vector<Triplet<double>> IJV;
+  IJV.reserve(9 * (Dx.outerSize() + Dy.outerSize() + Dz.outerSize()));
+
+  const int f_n = W.rows();
+  const int v_n = Dx.cols();
+
+  /*A = [W11*Dx, W12*Dx, W13*Dx;
+         W11*Dy, W12*Dy, W13*Dy;
+         W11*Dz, W12*Dz, W13*Dz;
+         W21*Dx, W22*Dx, W23*Dx;
+         W21*Dy, W22*Dy, W23*Dy;
+         W21*Dz, W22*Dz, W23*Dz;
+         W31*Dx, W32*Dx, W33*Dx;
+         W31*Dy, W32*Dy, W33*Dy;
+         W31*Dz, W32*Dz, W33*Dz;];*/
+  for (int k = 0; k < Dx.outerSize(); k++)
+  {
+    for (Eigen::SparseMatrix<double>::InnerIterator it(Dx, k); it; ++it)
+    {
+      int dx_r = it.row();
+      int dx_c = it.col();
+      double val = it.value();
+
+      double m_0 = sqrt_M(dx_r);
+      double m_3 = sqrt_M(dx_r);
+      double m_6 = sqrt_M(dx_r);
+      IJV.push_back(Eigen::Triplet<double>(dx_r, dx_c, m_0 * val * W(dx_r, 0)));
+      IJV.push_back(Eigen::Triplet<double>(dx_r,
+                                           v_n + dx_c,
+                                           m_0 * val * W(dx_r, 1)));
+      IJV.push_back(Eigen::Triplet<double>(dx_r,
+                                           2 * v_n + dx_c,
+                                           m_0 * val * W(dx_r, 2)));
+
+      IJV.push_back(Eigen::Triplet<double>(3 * f_n + dx_r,
+                                           dx_c,
+                                           m_3 * val * W(dx_r, 3)));
+      IJV.push_back(Eigen::Triplet<double>(3 * f_n + dx_r,
+                                           v_n + dx_c,
+                                           m_3 * val * W(dx_r, 4)));
+      IJV.push_back(Eigen::Triplet<double>(3 * f_n + dx_r,
+                                           2 * v_n + dx_c,
+                                           m_3 * val * W(dx_r, 5)));
+
+      IJV.push_back(Eigen::Triplet<double>(6 * f_n + dx_r,
+                                           dx_c,
+                                           m_6 * val * W(dx_r, 6)));
+      IJV.push_back(Eigen::Triplet<double>(6 * f_n + dx_r,
+                                           v_n + dx_c,
+                                           m_6 * val * W(dx_r, 7)));
+      IJV.push_back(Eigen::Triplet<double>(6 * f_n + dx_r,
+                                           2 * v_n + dx_c,
+                                           m_6 * val * W(dx_r, 8)));
+    }
+  }
+
+  for (int k = 0; k < Dy.outerSize(); k++)
+  {
+    for (Eigen::SparseMatrix<double>::InnerIterator it(Dy, k); it; ++it)
+    {
+      int dy_r = it.row();
+      int dy_c = it.col();
+      double val = it.value();
+
+      double m_1 = sqrt_M(dy_r);
+      double m_4 = sqrt_M(dy_r);
+      double m_7 = sqrt_M(dy_r);
+      IJV.push_back(Eigen::Triplet<double>(f_n + dy_r,
+                                           dy_c,
+                                           m_1 * val * W(dy_r, 0)));
+      IJV.push_back(Eigen::Triplet<double>(f_n + dy_r,
+                                           v_n + dy_c,
+                                           m_1 * val * W(dy_r, 1)));
+      IJV.push_back(Eigen::Triplet<double>(f_n + dy_r,
+                                           2 * v_n + dy_c,
+                                           m_1 * val * W(dy_r, 2)));
+
+      IJV.push_back(Eigen::Triplet<double>(4 * f_n + dy_r,
+                                           dy_c,
+                                           m_4 * val * W(dy_r, 3)));
+      IJV.push_back(Eigen::Triplet<double>(4 * f_n + dy_r,
+                                           v_n + dy_c,
+                                           m_4 * val * W(dy_r, 4)));
+      IJV.push_back(Eigen::Triplet<double>(4 * f_n + dy_r,
+                                           2 * v_n + dy_c,
+                                           m_4 * val * W(dy_r, 5)));
+
+      IJV.push_back(Eigen::Triplet<double>(7 * f_n + dy_r,
+                                           dy_c,
+                                           m_7 * val * W(dy_r, 6)));
+      IJV.push_back(Eigen::Triplet<double>(7 * f_n + dy_r,
+                                           v_n + dy_c,
+                                           m_7 * val * W(dy_r, 7)));
+      IJV.push_back(Eigen::Triplet<double>(7 * f_n + dy_r,
+                                           2 * v_n + dy_c,
+                                           m_7 * val * W(dy_r, 8)));
+    }
+  }
+
+  for (int k = 0; k < Dz.outerSize(); k++)
+  {
+    for (Eigen::SparseMatrix<double>::InnerIterator it(Dz, k); it; ++it)
+    {
+      int dz_r = it.row();
+      int dz_c = it.col();
+      double val = it.value();
+      double m_2 = sqrt_M(dz_r);
+      double m_5 = sqrt_M(dz_r);
+      double m_8 = sqrt_M(dz_r);
+      IJV.push_back(Eigen::Triplet<double>(2 * f_n + dz_r,
+                                           dz_c,
+                                           m_2 * val * W(dz_r, 0)));
+      IJV.push_back(Eigen::Triplet<double>(2 * f_n + dz_r,
+                                           v_n + dz_c,
+                                           m_2 * val * W(dz_r, 1)));
+      IJV.push_back(Eigen::Triplet<double>(2 * f_n + dz_r,
+                                           2 * v_n + dz_c,
+                                           m_2 * val * W(dz_r, 2)));
+
+      IJV.push_back(Eigen::Triplet<double>(5 * f_n + dz_r,
+                                           dz_c,
+                                           m_5 * val * W(dz_r, 3)));
+      IJV.push_back(Eigen::Triplet<double>(5 * f_n + dz_r,
+                                           v_n + dz_c,
+                                           m_5 * val * W(dz_r, 4)));
+      IJV.push_back(Eigen::Triplet<double>(5 * f_n + dz_r,
+                                           2 * v_n + dz_c,
+                                           m_5 * val * W(dz_r, 5)));
+
+      IJV.push_back(Eigen::Triplet<double>(8 * f_n + dz_r,
+                                           dz_c,
+                                           m_8 * val * W(dz_r, 6)));
+      IJV.push_back(Eigen::Triplet<double>(8 * f_n + dz_r,
+                                           v_n + dz_c,
+                                           m_8 * val * W(dz_r, 7)));
+      IJV.push_back(Eigen::Triplet<double>(8 * f_n + dz_r,
+                                           2 * v_n + dz_c,
+                                           m_8 * val * W(dz_r, 8)));
+    }
+  }
+
+  Am.setFromTriplets(IJV.begin(), IJV.end());
+}
+
+void buildRhs(const Eigen::VectorXd &sqrt_M,
+                              const Eigen::MatrixXd &W,
+                              const Eigen::MatrixXd &Ri,
+                              Eigen::VectorXd &f_rhs)
+{   
+  const int dim = (W.cols() == 4) ? 2 : 3;
+  const int f_n = W.rows();
+  f_rhs.resize(dim * dim * f_n);
+
+  if (dim == 2)
+  {
+    /*b = [W11*R11 + W12*R21; (formula (36))
+           W11*R12 + W12*R22;
+           W21*R11 + W22*R21;
+           W21*R12 + W22*R22];*/
+    for (int i = 0; i < f_n; i++)
+    {
+      auto sqrt_area = sqrt_M(i);
+      f_rhs(i + 0 * f_n) = sqrt_area * (W(i, 0) * Ri(i, 0) + W(i, 1) * Ri(i, 1));
+      f_rhs(i + 1 * f_n) = sqrt_area * (W(i, 0) * Ri(i, 2) + W(i, 1) * Ri(i, 3));
+      f_rhs(i + 2 * f_n) = sqrt_area * (W(i, 2) * Ri(i, 0) + W(i, 3) * Ri(i, 1));
+      f_rhs(i + 3 * f_n) = sqrt_area * (W(i, 2) * Ri(i, 2) + W(i, 3) * Ri(i, 3));
+    }
+  }
+  else
+  {
+    /*b = [W11*R11 + W12*R21 + W13*R31;
+           W11*R12 + W12*R22 + W13*R32;
+           W11*R13 + W12*R23 + W13*R33;
+           W21*R11 + W22*R21 + W23*R31;
+           W21*R12 + W22*R22 + W23*R32;
+           W21*R13 + W22*R23 + W23*R33;
+           W31*R11 + W32*R21 + W33*R31;
+           W31*R12 + W32*R22 + W33*R32;
+           W31*R13 + W32*R23 + W33*R33;];*/
+    for (int i = 0; i < f_n; i++)
+    {
+      auto sqrt_area = sqrt_M(i);
+      f_rhs(i + 0 * f_n) = sqrt_area *
+                           (W(i, 0) * Ri(i, 0) + W(i, 1) * Ri(i, 1) + W(i, 2) * Ri(i, 2));
+      f_rhs(i + 1 * f_n) = sqrt_area *
+                           (W(i, 0) * Ri(i, 3) + W(i, 1) * Ri(i, 4) + W(i, 2) * Ri(i, 5));
+      f_rhs(i + 2 * f_n) = sqrt_area *
+                           (W(i, 0) * Ri(i, 6) + W(i, 1) * Ri(i, 7) + W(i, 2) * Ri(i, 8));
+      f_rhs(i + 3 * f_n) = sqrt_area *
+                           (W(i, 3) * Ri(i, 0) + W(i, 4) * Ri(i, 1) + W(i, 5) * Ri(i, 2));
+      f_rhs(i + 4 * f_n) = sqrt_area *
+                           (W(i, 3) * Ri(i, 3) + W(i, 4) * Ri(i, 4) + W(i, 5) * Ri(i, 5));
+      f_rhs(i + 5 * f_n) = sqrt_area *
+                           (W(i, 3) * Ri(i, 6) + W(i, 4) * Ri(i, 7) + W(i, 5) * Ri(i, 8));
+      f_rhs(i + 6 * f_n) = sqrt_area *
+                           (W(i, 6) * Ri(i, 0) + W(i, 7) * Ri(i, 1) + W(i, 8) * Ri(i, 2));
+      f_rhs(i + 7 * f_n) = sqrt_area *
+                           (W(i, 6) * Ri(i, 3) + W(i, 7) * Ri(i, 4) + W(i, 8) * Ri(i, 5));
+      f_rhs(i + 8 * f_n) = sqrt_area *
+                           (W(i, 6) * Ri(i, 6) + W(i, 7) * Ri(i, 7) + W(i, 8) * Ri(i, 8));
+    }
+  }
+}
+
+void solve_weighted_arap(SCAFData &d_, Eigen::MatrixXd &uv)
+{
+  using namespace Eigen;
+  using namespace std;
+  int dim = d_.dim;
+  igl::Timer timer;
+  timer.start();
+
+  const VectorXi &bnd_ids = d_.frame_ids;
+  const auto v_n = d_.v_num;
+  const auto bnd_n = bnd_ids.size();
+  assert(bnd_n > 0);
+  MatrixXd bnd_pos;
+  igl::slice(d_.w_uv, bnd_ids, 1, bnd_pos);
+
+  ArrayXi known_ids(bnd_n * dim);
+  ArrayXi unknown_ids((v_n - bnd_n) * dim);
+
+  { // get the complement of bnd_ids.
+    int assign = 0, i = 0;
+    for (int get = 0; i < v_n && get < bnd_ids.size(); i++)
+    {
+      if (bnd_ids(get) == i)
+        get++;
+      else
+        unknown_ids(assign++) = i;
+    }
+    while (i < v_n)
+      unknown_ids(assign++) = i++;
+    assert(assign + bnd_ids.size() == v_n);
+  }
+
+  VectorXd known_pos(bnd_ids.size() * dim);
+  for (int d = 0; d < dim; d++)
+  {
+    auto n_b = bnd_ids.rows();
+    known_ids.segment(d * n_b, n_b) = bnd_ids.array() + d * v_n;
+    known_pos.segment(d * n_b, n_b) = bnd_pos.col(d);
+    unknown_ids.block(d * (v_n - n_b), 0, v_n - n_b, unknown_ids.cols()) =
+        unknown_ids.topRows(v_n - n_b) + d * v_n;
+  }
+  //std::cout<<"Slicing Knowns "<<timer.getElapsedTime()<<std::endl;
+  //timer.start();
+
+  Eigen::SparseMatrix<double> L;
+  Eigen::VectorXd rhs;
+
+  // fixed frame solving:
+  // x_e as the fixed frame, x_u for unknowns (mesh + unknown scaffold)
+  // min ||(A_u*x_u + A_e*x_e) - b||^2
+  // => A_u'*A_u*x_u + A_u'*A_e*x_e = Au'*b
+  // => A_u'*A_u*x_u  = Au'* (b - A_e*x_e) := Au'* b_u
+  // => L * x_u = rhs
+  //
+  // separate matrix build:
+  // min ||A_m x_m - b_m||^2 + ||A_s x_all - b_s||^2 + soft + proximal
+  // First change dimension of A_m to fit for x_all
+  // (Not just at the end, since x_all is flattened along dimensions)
+  // L = A_m'*A_m + A_s'*A_s + soft + proximal
+  // rhs = A_m'* b_m + A_s' * b_s + soft + proximal
+  //
+  using namespace std;
+  Eigen::SparseMatrix<double> L_m, L_s;
+  Eigen::VectorXd rhs_m, rhs_s;
+  build_surface_linear_system(d_, L_m, rhs_m);  // complete Am, with soft
+  build_scaffold_linear_system(d_, L_s, rhs_s); // complete As, without proximal
+  // we don't need proximal term
+
+  L = L_m + L_s;
+  rhs = rhs_m + rhs_s;
+  L.makeCompressed();
+
+  Eigen::VectorXd unknown_Uc((v_n - d_.frame_ids.size()) * dim), Uc(dim * v_n);
+  bool solve_with_cg = (d_.dim == 3); // use CG in 3D
+  if (solve_with_cg)
+  {
+    for (auto t : {1e-6})
+    {
+      timer.start();
+      ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Upper>
+          CGsolver;
+      CGsolver.setTolerance(t);
+      unknown_Uc = CGsolver.compute(L).solve(rhs);
+      cout << t << "CGSolve = " << timer.getElapsedTime() << endl;
+      std::cout << "#iterations:     " << CGsolver.iterations() << std::endl;
+      std::cout << "estimated error: " << CGsolver.error() << std::endl;
+    }
+  }
+  else
+  {
+    SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+    unknown_Uc = solver.compute(L).solve(rhs);
+    //cout << "Direct Solve = " << timer.getElapsedTime() << endl;
+  }
+  //timer.start();
+  igl::slice_into(unknown_Uc, unknown_ids.matrix(), 1, Uc);
+  igl::slice_into(known_pos, known_ids.matrix(), 1, Uc);
+
+  uv = Map<Matrix<double, -1, -1, Eigen::ColMajor>>(Uc.data(), v_n, dim);
+  //for (int i = 0; i < dim; i++)
+  //  uv.col(i) = Uc.block(i * v_n, 0, v_n, 1);
+  //cout << "Slice back = " << timer.getElapsedTime() << endl;
+}
+
+double perform_iteration(SCAFData &d_)
+{
+  auto &w_uv = d_.w_uv;
   Eigen::MatrixXd V_out = w_uv;
-  solve_weighted_proxy(V_out);
+  //solve_weighted_proxy(V_out);
+  {
+    auto &uv_new = V_out;
+    compute_jacobians(d_, uv_new, true);
+    if (d_.dim == 2)
+    {
+      update_weights_and_closest_rotations<2>(d_.Ji_m, d_.slim_energy,
+                                              d_.W_m, d_.Ri_m);
+      update_weights_and_closest_rotations<2>(d_.Ji_s, d_.scaf_energy,
+                                              d_.W_s, d_.Ri_s);
+    }
+    else
+    {
+      update_weights_and_closest_rotations<3>(d_.Ji_m, d_.slim_energy,
+                                              d_.W_m, d_.Ri_m);
+      update_weights_and_closest_rotations<3>(d_.Ji_s, d_.scaf_energy,
+                                              d_.W_s, d_.Ri_s);
+    }
+    //  cout << "update_weigths = "<<timer.getElapsedTime()<<endl;
+    solve_weighted_arap(d_, uv_new);
+  }
   auto whole_E =
       [&d_](Eigen::MatrixXd &uv) { return compute_energy(d_, uv); };
 
   igl::Timer timer;
   timer.start();
   Eigen::MatrixXi w_T;
-  if(d_.m_T.cols() == d_.s_T.cols())
+  if (d_.m_T.cols() == d_.s_T.cols())
     igl::cat(1, d_.m_T, d_.s_T, w_T);
   else
     w_T = d_.s_T;
-  double energy= igl::flip_avoiding_line_search(w_T, w_uv, V_out,
-                                        whole_E, -1) / d_.mesh_measure;
+  double energy = igl::flip_avoiding_line_search(w_T, w_uv, V_out,
+                                                 whole_E, -1) /
+                  d_.mesh_measure;
   return energy;
-}*/
-
+}
 }
 }
 

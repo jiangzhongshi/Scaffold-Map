@@ -4,7 +4,7 @@ project(scaffold-map)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 set(LIBIGL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libigl/include)
-set(LIBIGL_INCLUDE_DIRS ${LIBIGL_INCLUDE_DIR}  ${LIBIGL_INCLUDE_DIR}/../external/Singular_Value_Decomposition)
+set(LIBIGL_INCLUDE_DIRS ${LIBIGL_INCLUDE_DIR})
 
 # Compilation flags: adapt to your needs
 if(MSVC)

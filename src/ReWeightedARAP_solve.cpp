@@ -13,6 +13,7 @@
 #include "igl/per_face_normals.h"
 #include "igl/slice_into.h"
 #include "igl/serialize.h"
+#include <igl/columnize.h>
 
 #include <igl/flip_avoiding_line_search.h>
 #include <igl/boundary_facets.h>
