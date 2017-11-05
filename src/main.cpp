@@ -1,52 +1,50 @@
 #include "ReWeightedARAP.h"
 #include "StateManager.h"
-#include "util/triangle_utils.h"
-#include "util/tetgenio_parser.h"
 #include "UI/DeformGUI.h"
 #include "UI/TextureGUI.h"
-
-#include <nanogui/formhelper.h>
-#include <nanogui/screen.h>
-
-#include <igl/viewer/Viewer.h>
-#include <igl/triangle/triangulate.h>
+#include "util/tetgenio_parser.h"
+#include "util/triangle_utils.h"
+#include <algorithm>
+#include <igl/PI.h>
+#include <igl/Timer.h>
+#include <igl/adjacency_matrix.h>
+#include <igl/barycenter.h>
 #include <igl/boundary_loop.h>
 #include <igl/cat.h>
-#include <igl/slice_into.h>
-#include <igl/local_basis.h>
-#include <igl/read_triangle_mesh.h>
-#include <igl/polar_svd.h>
-#include <igl/write_triangle_mesh.h>
-#include <igl/flip_avoiding_line_search.h>
-#include <igl/adjacency_matrix.h>
-#include <igl/png/writePNG.h>
-
-#include <igl/slim.h>
-#include <igl/slice.h>
 #include <igl/colon.h>
-#include <igl/Timer.h>
-#include <igl/map_vertices_to_circle.h>
-#include <igl/harmonic.h>
-#include <igl/flipped_triangles.h>
 #include <igl/components.h>
-#include <igl/euler_characteristic.h>
-#include <igl/is_edge_manifold.h>
-#include <igl/doublearea.h>
-#include <igl/squared_edge_lengths.h>
-#include <igl/PI.h>
-
-#include <memory>
-#include <algorithm>
-#include <iostream>
 #include <igl/copyleft/tetgen/tetrahedralize.h>
-#include <igl/barycenter.h>
-#include <igl/remove_duplicate_vertices.h>
+#include <igl/doublearea.h>
+#include <igl/euler_characteristic.h>
+#include <igl/flip_avoiding_line_search.h>
+#include <igl/flipped_triangles.h>
+#include <igl/harmonic.h>
+#include <igl/is_edge_manifold.h>
+#include <igl/local_basis.h>
+#include <igl/map_vertices_to_circle.h>
+#include <igl/png/writePNG.h>
+#include <igl/polar_svd.h>
 #include <igl/readMESH.h>
+#include <igl/read_triangle_mesh.h>
+#include <igl/remove_duplicate_vertices.h>
+#include <igl/slice.h>
+#include <igl/slice_into.h>
+#include <igl/slim.h>
+#include <igl/squared_edge_lengths.h>
+#include <igl/triangle/triangulate.h>
+#include <igl/viewer/Viewer.h>
 #include <igl/writeMESH.h>
 #include <igl/writeOBJ.h>
+#include <igl/write_triangle_mesh.h>
+#include <iostream>
+#include <memory>
+#include <nanogui/formhelper.h>
+#include <nanogui/screen.h>
 #define MODEL_PATH "../models/bumpy.off"
 #define CUBE_PATH "../models/cube_cc1.obj"
 
+#ifndef IGLSCAF
+#define NOGUI
 int main(int argc, char* argv[]) {
   using namespace Eigen;
   using namespace std;
@@ -106,3 +104,29 @@ int main(int argc, char* argv[]) {
 #endif
   return 0;
 }
+#else 
+#include "igl_dev/scaf.h"
+#include <igl/readOBJ.h>
+int main(int argc, char* argv[]) {
+  using namespace Eigen;
+  using namespace std;
+  std::string filename = argv[1];
+  Eigen::MatrixXd V;
+  Eigen::MatrixXi F;
+  igl::readOBJ(filename,V,F);
+  // VectorXd M;
+  // igl::doublearea(V, F, M);
+
+  Eigen::MatrixXd uv_init;
+  // Eigen::VectorXi bnd; Eigen::MatrixXd bnd_uv;
+  // igl::boundary_loop(F,bnd);
+  // igl::map_vertices_to_circle(V,bnd,bnd_uv);
+  // bnd_uv *= sqrt(M.sum() / (2 * igl::PI));
+
+  igl::SCAFData d_;
+  igl::scaf_precompute(V,F,uv_init, d_, 0);
+  igl::scaf_solve(d_, 50);
+
+  return 0;
+}
+#endif

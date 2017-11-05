@@ -17,7 +17,7 @@ namespace igl
       igl::SLIMData::SLIM_ENERGY scaf_energy = igl::SLIMData::SYMMETRIC_DIRICHLET;
       igl::SLIMData::SLIM_ENERGY slim_energy = igl::SLIMData::SYMMETRIC_DIRICHLET;
 
-// Output
+      // Output
       int dim = 2;
       double energy; // objective value
 
@@ -26,7 +26,7 @@ namespace igl
       long v_num, f_num;
       Eigen::MatrixXd m_V; // input initial mesh V
       Eigen::MatrixXi m_T; // input initial mesh F/T
-// INTERNAL
+      // INTERNAL
       Eigen::MatrixXd w_uv; // whole domain uv: mesh + free vertices
       Eigen::MatrixXi s_T; // scaffold domain tets: scaffold tets
       Eigen::MatrixXi w_T;
@@ -43,17 +43,17 @@ namespace igl
       std::map<int, Eigen::RowVectorXd> soft_cons;
       double soft_const_p = 1e4;
 
-    Eigen::VectorXi internal_bnd;
-    Eigen::MatrixXd rect_frame_V;
-    // multi-chart support
-    std::vector<int> component_sizes;
-    std::vector<int> bnd_sizes;
+      Eigen::VectorXi internal_bnd;
+      Eigen::MatrixXd rect_frame_V;
+      // multi-chart support
+      std::vector<int> component_sizes;
+      std::vector<int> bnd_sizes;
       /*
-    public:
-      SCAFData();
-      SCAFData(Eigen::MatrixXd &mesh_V, Eigen::MatrixXi &mesh_F,
-          Eigen::MatrixXd &all_V, Eigen::MatrixXi &scaf_T);
-      void add_new_patch(const Eigen::MatrixXd&, const Eigen::MatrixXi&,
+      public:
+        SCAFData();
+        SCAFData(Eigen::MatrixXd &mesh_V, Eigen::MatrixXi &mesh_F,
+            Eigen::MatrixXd &all_V, Eigen::MatrixXi &scaf_T);
+        void add_new_patch(const Eigen::MatrixXd&, const Eigen::MatrixXi&,
                          const Eigen::RowVectorXd &center);
 
       void mesh_improve();

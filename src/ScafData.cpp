@@ -146,7 +146,7 @@ void ScafData::mesh_improve(bool in_packing = false) {
         return (a - d).dot((b - d).cross(c - d)) / 6.;
       }
 
-// https://hal.inria.fr/inria-00518327
+    // https://hal.inria.fr/inria-00518327
       inline static double quality(const vec3 &a,
                                    const vec3 &b,
                                    const vec3 &c,
