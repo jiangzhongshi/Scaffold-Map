@@ -4,65 +4,53 @@
 
 #include "scaf.h"
 
-#include <igl/doublearea.h>
-#include <iostream>
-#include <igl/volume.h>
-#include <igl/boundary_facets.h>
-#include <igl/Timer.h>
-#include <igl/massmatrix.h>
-#include <igl/triangle/triangulate.h>
-#include <igl/cat.h>
-#include <igl/boundary_loop.h>
-#include <igl/edge_flaps.h>
-#include <igl/map_vertices_to_circle.h>
-#include <igl/harmonic.h>
-#include <igl/flipped_triangles.h>
-#include <igl/PI.h>
-
-#include "igl/arap.h"
-#include "igl/cat.h"
-#include "igl/doublearea.h"
-#include "igl/grad.h"
-#include "igl/local_basis.h"
-#include "igl/per_face_normals.h"
-#include "igl/slice_into.h"
-#include "igl/serialize.h"
-
+#include <Eigen/Dense>
+#include <Eigen/IterativeLinearSolvers>
+#include <Eigen/IterativeLinearSolvers>
+#include <Eigen/Sparse>
+#include <Eigen/Sparse>
+#include <Eigen/SparseCholesky>
+#include <Eigen/SparseQR>
 #include <igl/ARAPEnergyType.h>
-#include <igl/covariance_scatter_matrix.h>
-
-#include <igl/flip_avoiding_line_search.h>
+#include <igl/PI.h>
+#include <igl/Timer.h>
+#include <igl/Timer.h>
+#include <igl/arap.h>
+#include <igl/arap_linear_block.h>
 #include <igl/boundary_facets.h>
-#include <igl/unique.h>
-#include <igl/slim.h>
-#include <igl/grad.h>
-#include <igl/is_symmetric.h>
-#include <igl/polar_svd.h>
 #include <igl/boundary_loop.h>
+#include <igl/cat.h>
+#include <igl/cat.h>
+#include <igl/colon.h>
 #include <igl/cotmatrix.h>
+#include <igl/covariance_scatter_matrix.h>
+#include <igl/doublearea.h>
+#include <igl/edge_flaps.h>
 #include <igl/edge_lengths.h>
+#include <igl/flip_avoiding_line_search.h>
+#include <igl/flipped_triangles.h>
+#include <igl/grad.h>
+#include <igl/harmonic.h>
+#include <igl/is_symmetric.h>
 #include <igl/local_basis.h>
+#include <igl/map_vertices_to_circle.h>
+#include <igl/massmatrix.h>
+#include <igl/per_face_normals.h>
+#include <igl/polar_svd.h>
 #include <igl/readOBJ.h>
 #include <igl/repdiag.h>
-#include <igl/vector_area_matrix.h>
-#include <iostream>
+#include <igl/serialize.h>
 #include <igl/slice.h>
-#include <igl/colon.h>
-
-#include <Eigen/IterativeLinearSolvers>
-#include <Eigen/Sparse>
-#include <Eigen/SparseQR>
-#include <Eigen/SparseCholesky>
-#include <Eigen/IterativeLinearSolvers>
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
-
+#include <igl/slice_into.h>
+#include <igl/slim.h>
+#include <igl/triangle/triangulate.h>
+#include <igl/unique.h>
+#include <igl/vector_area_matrix.h>
+#include <igl/volume.h>
+#include <iostream>
 #include <map>
 #include <set>
 #include <vector>
-#include <igl/Timer.h>
-#include <igl/edge_flaps.h>
-#include <igl/arap_linear_block.h>
 
 namespace igl
 {
@@ -1018,6 +1006,9 @@ void update_weights_and_closest_rotations<3>(
       ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
       break;
     }
+
+    default:
+    assert(false);
     }
     if (std::abs(s1 - 1) < eps)
       m_sing_new(0) = 1;
@@ -1049,172 +1040,6 @@ void update_weights_and_closest_rotations<3>(
     Ri(i, 7) = ri(1, 2);
     Ri(i, 8) = ri(2, 2);
   }
-}
-
-void build_surface_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double> &L, Eigen::VectorXd &rhs)
-{
-
-  using namespace Eigen;
-  using namespace std;
-
-  const int v_n = d_.v_num - (d_.frame_ids.size());
-  const int dim = d_.dim;
-  const int f_n = d_.mf_num;
-
-  // to get the  complete A
-  Eigen::VectorXd sqrtM = d_.m_M.array().sqrt();
-  Eigen::SparseMatrix<double> A(dim * dim * f_n, dim * v_n);
-  auto decoy_Dx_m = d_.Dx_m;
-  decoy_Dx_m.conservativeResize(d_.W_m.rows(), v_n);
-  auto decoy_Dy_m = d_.Dy_m;
-  decoy_Dy_m.conservativeResize(d_.W_m.rows(), v_n);
-  if (dim == 2)
-  {
-    buildAm(sqrtM, decoy_Dx_m, decoy_Dy_m, d_.W_m, A);
-  }
-  else
-  {
-    auto decoy_Dz_m = d_.Dz_m;
-    decoy_Dz_m.conservativeResize(d_.W_m.rows(), v_n);
-    buildAm(sqrtM, decoy_Dx_m, decoy_Dy_m, decoy_Dz_m, d_.W_m, A);
-  }
-
-  Eigen::SparseMatrix<double> At = A.transpose();
-  At.makeCompressed();
-
-  Eigen::SparseMatrix<double> id_m(At.rows(), At.rows());
-  id_m.setIdentity();
-
-  L = At * A;
-
-  Eigen::VectorXd frhs;
-  buildRhs(sqrtM, d_.W_m, d_.Ri_m, frhs);
-  rhs = At * frhs;
-
-  // add soft constraints.
-  for (auto const &x : d_.soft_cons)
-  {
-    int v_idx = x.first;
-
-    for (int d = 0; d < dim; d++)
-    {
-      rhs(d * (v_n) + v_idx) += d_.soft_const_p * x.second(d); // rhs
-      L.coeffRef(d * v_n + v_idx,
-                 d * v_n + v_idx) += d_.soft_const_p; // diagonal
-    }
-  }
-}
-
-void build_scaffold_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double> &L, Eigen::VectorXd &rhs)
-{
-  using namespace Eigen;
-
-  const int f_n = d_.W_s.rows();
-  const int v_n = d_.Dx_s.cols();
-  const int dim = d_.dim;
-
-  Eigen::VectorXd sqrtM = d_.s_M.array().sqrt();
-  Eigen::SparseMatrix<double> A(dim * dim * f_n, dim * v_n);
-  if (dim == 2)
-    buildAm(sqrtM, d_.Dx_s, d_.Dy_s, d_.W_s, A);
-  else
-    buildAm(sqrtM, d_.Dx_s, d_.Dy_s, d_.Dz_s, d_.W_s, A);
-
-  const VectorXi &bnd_ids = d_.frame_ids;
-
-  auto bnd_n = bnd_ids.size();
-  assert(bnd_n > 0);
-  MatrixXd bnd_pos;
-  igl::slice(d_.w_uv, bnd_ids, 1, bnd_pos);
-
-  ArrayXi known_ids(bnd_ids.size() * dim);
-  ArrayXi unknown_ids((v_n - bnd_ids.rows()) * dim);
-
-  { // get the complement of bnd_ids.
-    int assign = 0, i = 0;
-    for (int get = 0; i < v_n && get < bnd_ids.size(); i++)
-    {
-      if (bnd_ids(get) == i)
-        get++;
-      else
-        unknown_ids(assign++) = i;
-    }
-    while (i < v_n)
-      unknown_ids(assign++) = i++;
-    assert(assign + bnd_ids.size() == v_n);
-  }
-
-  VectorXd known_pos(bnd_ids.size() * dim);
-  for (int d = 0; d < dim; d++)
-  {
-    auto n_b = bnd_ids.rows();
-    known_ids.segment(d * n_b, n_b) = bnd_ids.array() + d * v_n;
-    known_pos.segment(d * n_b, n_b) = bnd_pos.col(d);
-    unknown_ids.block(d * (v_n - n_b), 0, v_n - n_b, unknown_ids.cols()) =
-        unknown_ids.topRows(v_n - n_b) + d * v_n;
-  }
-  Eigen::VectorXd sqrt_M = d_.s_M.array().sqrt();
-
-  // slice
-  // 'manual slicing for A(:, unknown/known)'
-  Eigen::SparseMatrix<double> Au, Ae;
-  {
-    using TY = double;
-    using TX = double;
-    auto &X = A;
-
-    int xm = X.rows();
-    int xn = X.cols();
-    int ym = xm;
-    int yn = unknown_ids.size();
-    int ykn = known_ids.size();
-
-    std::vector<int> CI(xn, -1);
-    std::vector<int> CKI(xn, -1);
-    // initialize to -1
-    for (int i = 0; i < yn; i++)
-      CI[unknown_ids(i)] = (i);
-    for (int i = 0; i < ykn; i++)
-      CKI[known_ids(i)] = i;
-    Eigen::DynamicSparseMatrix<TY, Eigen::ColMajor> dyn_Y(ym, yn);
-    Eigen::DynamicSparseMatrix<TY, Eigen::ColMajor> dyn_K(ym, ykn);
-    // Take a guess at the number of nonzeros (this assumes uniform distribution
-    // not banded or heavily diagonal)
-    dyn_Y.reserve(A.nonZeros());
-    dyn_K.reserve(A.nonZeros() * ykn / xn);
-    // Iterate over outside
-    for (int k = 0; k < X.outerSize(); ++k)
-    {
-      // Iterate over inside
-      if (CI[k] != -1)
-        for (typename Eigen::SparseMatrix<TX>::InnerIterator it(X, k); it;
-             ++it)
-        {
-          dyn_Y.coeffRef(it.row(), CI[it.col()]) = it.value();
-        }
-      else
-        for (typename Eigen::SparseMatrix<TX>::InnerIterator it(X, k); it;
-             ++it)
-        {
-          dyn_K.coeffRef(it.row(), CKI[it.col()]) = it.value();
-        }
-    }
-    Au = Eigen::SparseMatrix<TY>(dyn_Y);
-    Ae = Eigen::SparseMatrix<double>(dyn_K);
-  }
-
-  Eigen::SparseMatrix<double> Aut = Au.transpose();
-  Aut.makeCompressed();
-
-  Eigen::SparseMatrix<double> id(Aut.rows(), Aut.rows());
-  id.setIdentity();
-
-  L = Aut * Au;
-
-  Eigen::VectorXd frhs;
-  buildRhs(sqrtM, d_.W_s, d_.Ri_s, frhs);
-
-  rhs = Aut * (frhs - Ae * known_pos);
 }
 
 void buildAm(const Eigen::VectorXd &sqrt_M,
@@ -1487,6 +1312,173 @@ void buildRhs(const Eigen::VectorXd &sqrt_M,
   }
 }
 
+
+void build_surface_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double> &L, Eigen::VectorXd &rhs)
+{
+
+  using namespace Eigen;
+  using namespace std;
+
+  const int v_n = d_.v_num - (d_.frame_ids.size());
+  const int dim = d_.dim;
+  const int f_n = d_.mf_num;
+
+  // to get the  complete A
+  Eigen::VectorXd sqrtM = d_.m_M.array().sqrt();
+  Eigen::SparseMatrix<double> A(dim * dim * f_n, dim * v_n);
+  auto decoy_Dx_m = d_.Dx_m;
+  decoy_Dx_m.conservativeResize(d_.W_m.rows(), v_n);
+  auto decoy_Dy_m = d_.Dy_m;
+  decoy_Dy_m.conservativeResize(d_.W_m.rows(), v_n);
+  if (dim == 2)
+  {
+    buildAm(sqrtM, decoy_Dx_m, decoy_Dy_m, d_.W_m, A);
+  }
+  else
+  {
+    auto decoy_Dz_m = d_.Dz_m;
+    decoy_Dz_m.conservativeResize(d_.W_m.rows(), v_n);
+    buildAm(sqrtM, decoy_Dx_m, decoy_Dy_m, decoy_Dz_m, d_.W_m, A);
+  }
+
+  Eigen::SparseMatrix<double> At = A.transpose();
+  At.makeCompressed();
+
+  Eigen::SparseMatrix<double> id_m(At.rows(), At.rows());
+  id_m.setIdentity();
+
+  L = At * A;
+
+  Eigen::VectorXd frhs;
+  buildRhs(sqrtM, d_.W_m, d_.Ri_m, frhs);
+  rhs = At * frhs;
+
+  // add soft constraints.
+  for (auto const &x : d_.soft_cons)
+  {
+    int v_idx = x.first;
+
+    for (int d = 0; d < dim; d++)
+    {
+      rhs(d * (v_n) + v_idx) += d_.soft_const_p * x.second(d); // rhs
+      L.coeffRef(d * v_n + v_idx,
+                 d * v_n + v_idx) += d_.soft_const_p; // diagonal
+    }
+  }
+}
+
+void build_scaffold_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double> &L, Eigen::VectorXd &rhs)
+{
+  using namespace Eigen;
+
+  const int f_n = d_.W_s.rows();
+  const int v_n = d_.Dx_s.cols();
+  const int dim = d_.dim;
+
+  Eigen::VectorXd sqrtM = d_.s_M.array().sqrt();
+  Eigen::SparseMatrix<double> A(dim * dim * f_n, dim * v_n);
+  if (dim == 2)
+    buildAm(sqrtM, d_.Dx_s, d_.Dy_s, d_.W_s, A);
+  else
+    buildAm(sqrtM, d_.Dx_s, d_.Dy_s, d_.Dz_s, d_.W_s, A);
+
+  const VectorXi &bnd_ids = d_.frame_ids;
+
+  auto bnd_n = bnd_ids.size();
+  assert(bnd_n > 0);
+  MatrixXd bnd_pos;
+  igl::slice(d_.w_uv, bnd_ids, 1, bnd_pos);
+
+  ArrayXi known_ids(bnd_ids.size() * dim);
+  ArrayXi unknown_ids((v_n - bnd_ids.rows()) * dim);
+
+  { // get the complement of bnd_ids.
+    int assign = 0, i = 0;
+    for (int get = 0; i < v_n && get < bnd_ids.size(); i++)
+    {
+      if (bnd_ids(get) == i)
+        get++;
+      else
+        unknown_ids(assign++) = i;
+    }
+    while (i < v_n)
+      unknown_ids(assign++) = i++;
+    assert(assign + bnd_ids.size() == v_n);
+  }
+
+  VectorXd known_pos(bnd_ids.size() * dim);
+  for (int d = 0; d < dim; d++)
+  {
+    auto n_b = bnd_ids.rows();
+    known_ids.segment(d * n_b, n_b) = bnd_ids.array() + d * v_n;
+    known_pos.segment(d * n_b, n_b) = bnd_pos.col(d);
+    unknown_ids.block(d * (v_n - n_b), 0, v_n - n_b, unknown_ids.cols()) =
+        unknown_ids.topRows(v_n - n_b) + d * v_n;
+  }
+  Eigen::VectorXd sqrt_M = d_.s_M.array().sqrt();
+
+  // slice
+  // 'manual slicing for A(:, unknown/known)'
+  Eigen::SparseMatrix<double> Au, Ae;
+  {
+    using TY = double;
+    using TX = double;
+    auto &X = A;
+
+    int xm = X.rows();
+    int xn = X.cols();
+    int ym = xm;
+    int yn = unknown_ids.size();
+    int ykn = known_ids.size();
+
+    std::vector<int> CI(xn, -1);
+    std::vector<int> CKI(xn, -1);
+    // initialize to -1
+    for (int i = 0; i < yn; i++)
+      CI[unknown_ids(i)] = (i);
+    for (int i = 0; i < ykn; i++)
+      CKI[known_ids(i)] = i;
+    Eigen::DynamicSparseMatrix<TY, Eigen::ColMajor> dyn_Y(ym, yn);
+    Eigen::DynamicSparseMatrix<TY, Eigen::ColMajor> dyn_K(ym, ykn);
+    // Take a guess at the number of nonzeros (this assumes uniform distribution
+    // not banded or heavily diagonal)
+    dyn_Y.reserve(A.nonZeros());
+    dyn_K.reserve(A.nonZeros() * ykn / xn);
+    // Iterate over outside
+    for (int k = 0; k < X.outerSize(); ++k)
+    {
+      // Iterate over inside
+      if (CI[k] != -1)
+        for (typename Eigen::SparseMatrix<TX>::InnerIterator it(X, k); it;
+             ++it)
+        {
+          dyn_Y.coeffRef(it.row(), CI[it.col()]) = it.value();
+        }
+      else
+        for (typename Eigen::SparseMatrix<TX>::InnerIterator it(X, k); it;
+             ++it)
+        {
+          dyn_K.coeffRef(it.row(), CKI[it.col()]) = it.value();
+        }
+    }
+    Au = Eigen::SparseMatrix<TY>(dyn_Y);
+    Ae = Eigen::SparseMatrix<double>(dyn_K);
+  }
+
+  Eigen::SparseMatrix<double> Aut = Au.transpose();
+  Aut.makeCompressed();
+
+  Eigen::SparseMatrix<double> id(Aut.rows(), Aut.rows());
+  id.setIdentity();
+
+  L = Aut * Au;
+
+  Eigen::VectorXd frhs;
+  buildRhs(sqrtM, d_.W_s, d_.Ri_s, frhs);
+
+  rhs = Aut * (frhs - Ae * known_pos);
+}
+
 void solve_weighted_arap(SCAFData &d_, Eigen::MatrixXd &uv)
 {
   using namespace Eigen;
@@ -1757,6 +1749,7 @@ IGL_INLINE Eigen::MatrixXd igl::scaf_solve(SCAFData &d_, int iter_num)
   cout << "V_num: " << d_.v_num << " F_num: " << d_.f_num << endl;
   last_mesh_energy = current_mesh_energy;
 
-  Eigen::MatrixXd wuv3 = Eigen::MatrixXd::Zero(d_.v_num, 3);
-  wuv3.leftCols(2) = d_.w_uv;
+  //Eigen::MatrixXd wuv3 = Eigen::MatrixXd::Zero(d_.v_num, 3);
+  //wuv3.leftCols(2) = d_.w_uv;
+  return d_.w_uv;
 }
