@@ -95,6 +95,8 @@ void ScafData::add_soft_constraints(int b, const Eigen::RowVectorXd &bc) {
   soft_cons[b] = bc;
 }
 
+extern int global_frame_points;
+extern std::string global_triangle_area_string;
 
 void ScafData::mesh_improve(bool in_packing = false) {
   if (dim == 3) {
@@ -233,7 +235,7 @@ void ScafData::mesh_improve(bool in_packing = false) {
       }
       Vector2d rect_len;
       rect_len << ob(1, 0) - ob(0, 0), ob(1, 1) - ob(0, 1);
-      int frame_points = 5;
+      int frame_points = global_frame_points;
 
       if(in_packing) {
         // adjust to square, as in packing
@@ -296,7 +298,8 @@ void ScafData::mesh_improve(bool in_packing = false) {
     H /= 3.;
 
     MatrixXd uv2;
-    igl::triangle::triangulate(V, E, H, "qYYQ", uv2, s_T);
+    std::string triangle_switch = global_triangle_area_string + std::string("qYYQ");
+    igl::triangle::triangulate(V, E, H, triangle_switch, uv2, s_T);
     auto bnd_n = internal_bnd.size();
 
     for (auto i = 0; i < s_T.rows(); i++)

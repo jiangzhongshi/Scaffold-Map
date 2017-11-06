@@ -44,14 +44,19 @@
 #define CUBE_PATH "../models/cube_cc1.obj"
 
 #ifndef IGLSCAF
-#define NOGUI
+
+int global_frame_points;
+std::string global_triangle_area_string;
+
 int main(int argc, char* argv[]) {
   using namespace Eigen;
   using namespace std;
   std::string filename = argv[1];
+  global_frame_points = std::stoi(argv[2]);
+  global_triangle_area_string = argv[3];
   StateManager s_(filename);
 #ifndef NOGUI
-  bool complex_ui = (argc >= 3);
+  bool complex_ui = false;
   if(complex_ui) {
     TextureGUI gui(s_);
     gui.launch();
