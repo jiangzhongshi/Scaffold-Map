@@ -40,32 +40,33 @@
 #include <igl/serialize.h>
 
 SERIALIZE_TYPE(ScafData,
-SERIALIZE_MEMBER(scaffold_factor)
-SERIALIZE_MEMBER(m_V)
-SERIALIZE_MEMBER(m_T)
-SERIALIZE_MEMBER(w_uv)
-SERIALIZE_MEMBER(s_T)
+SERIALIZE_MEMBER(bnd_sizes)
+SERIALIZE_MEMBER(component_sizes)
+SERIALIZE_MEMBER(inner_scaf_tets) 
+SERIALIZE_MEMBER(dim)
+SERIALIZE_MEMBER(frame_ids)
+SERIALIZE_MEMBER(internal_bnd)
 SERIALIZE_MEMBER(m_M)
-SERIALIZE_MEMBER(s_M)
+SERIALIZE_MEMBER(m_T)
+SERIALIZE_MEMBER(m_V)
 SERIALIZE_MEMBER(mesh_measure)
 SERIALIZE_MEMBER(proximal_p)
+SERIALIZE_MEMBER(rect_frame_V)
+SERIALIZE_MEMBER(s_M)
+SERIALIZE_MEMBER(s_T)
+SERIALIZE_MEMBER(scaffold_factor)
 SERIALIZE_MEMBER(soft_cons)
 SERIALIZE_MEMBER(soft_const_p)
 SERIALIZE_MEMBER(surface_F)
-    SERIALIZE_MEMBER(frame_ids)
-    SERIALIZE_MEMBER(internal_bnd)
-               SERIALIZE_MEMBER(rect_frame_V)
-               SERIALIZE_MEMBER(component_sizes)
-    SERIALIZE_MEMBER(bnd_sizes)
+SERIALIZE_MEMBER(w_uv)
 )
 
 void leg_flow_initializer(Eigen::MatrixXd & mTV, Eigen::MatrixXi &mTT,
                          Eigen::MatrixXd &wTV, Eigen::MatrixXi &sTT,
-                         Eigen::VectorXi& frame, Eigen::MatrixXi&surf_F);
+                         Eigen::VectorXi& frame, Eigen::MatrixXi&surf_F, int&);
 
 void parameterization_init( std::string filename, Eigen::MatrixXd& V_ref,
-                            Eigen::MatrixXi
-&F_ref,
+                            Eigen::MatrixXi &F_ref,
                            Eigen::MatrixXd& V_all, Eigen::MatrixXi &F_scaf,
                            Eigen::VectorXi &frame_id, Eigen::MatrixXi&disp_F);
 //void bars_stack_construction(ScafData& d_);
@@ -102,6 +103,17 @@ iter_count(0) {
 //      bars_stack_construction(scaf_data);
       break;
     case DemoType::FLOW:
+    {
+      int scaf_inner_tets = -1; 
+    leg_flow_initializer(V0,T0, V1, T1, frame, surf, scaf_inner_tets); 
+    assert(scaf_inner_tets != -1); 
+   
+    this->scaf_data = ScafData(V0, T0, V1, T1); 
+    this->scaf_data.frame_ids = frame; 
+    this->scaf_data.surface_F = surf; 
+    this->scaf_data.inner_scaf_tets = scaf_inner_tets; 
+    break;
+  }
     default:
       assert(false);
   }

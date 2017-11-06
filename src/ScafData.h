@@ -76,7 +76,7 @@ struct ScafData {
   double avg_edge_length;
   long v_num;
   long f_num;
-  double proximal_p = 0;
+  double proximal_p = 1e-8; //unused
 
   std::map<int, Eigen::RowVectorXd> soft_cons;
   double soft_const_p = 1e4;
@@ -101,7 +101,11 @@ struct ScafData {
   Eigen::MatrixXi surface_F;
 
   int dim; // dimension for ambient space. Same for mesh/scaf
-};
+
+  // flow arap
+  int inner_scaf_tets = 0; 
+          
+  };
 
 
-#endif //SCAFFOLD_TEST_SCAFDATA_H
+  #endif //SCAFFOLD_TEST_SCAFDATA_H
