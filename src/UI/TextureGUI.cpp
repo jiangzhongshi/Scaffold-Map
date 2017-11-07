@@ -48,16 +48,16 @@ s_(state), d_(state.scaf_data) {
     return this->post_draw();
   };
   v_.callback_init = [this](igl_viewer&) {
-    return extended_menu();
+    return this->extended_menu();
   };
   v_.callback_key_pressed = [this](igl_viewer&, auto a, auto b) {
-    return key_pressed(a);
+    return this->key_pressed(a);
   };
   v_.callback_mouse_down = [this](igl_viewer&, auto a, auto b) {
-    return mouse_down(a);
+    return this->mouse_down(a);
   };
   v_.callback_mouse_up = [this](igl_viewer&, auto a, auto b) {
-    return mouse_up(a);
+    return this->mouse_up(a);
   };
 
 }

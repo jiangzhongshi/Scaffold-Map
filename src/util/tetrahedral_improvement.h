@@ -7,6 +7,7 @@
 #include "../igl_dev/edge_removal.h"
 #include "../igl_dev/multi_face_removal.h"
 #include "../igl_dev/tet_refine_operations.h"
+#include <math.h>
 inline void edge_removal_pass(
     std::function<double(int, int,
                          int, int)> tet_quality,
@@ -38,7 +39,7 @@ inline void edge_removal_pass(
     std::tie(neg_qual, tid, stamp) = tet_qual_heap.back();
     tet_qual_heap.pop_back();
 
-    assert(isfinite(neg_qual) && !isnan(neg_qual));
+    assert(std::isfinite(neg_qual) && !std::isnan(neg_qual));
     if (stamp < tet_time_stamps[tid] || tid >= T.size()) continue;
     // tid >= T size is possible because of shirnkage.
     // or it can be avoided by incrementing stamp[t] that is discarded
@@ -96,7 +97,7 @@ inline void face_removal_pass(
     std::tie(neg_qual, tid, stamp) = tet_qual_heap.back();
     tet_qual_heap.pop_back();
 
-    assert(isfinite(neg_qual) && !isnan(neg_qual));
+    assert(std::isfinite(neg_qual) && !std::isnan(neg_qual));
     if (stamp < tet_time_stamps[tid] || tid >= T.size()) continue;
     // tid >= T size is possible because of shirnkage.
     // or it can be avoided by incrementing stamp[t] that is discarded
@@ -162,7 +163,7 @@ inline void combined_improvement_pass(
     std::tie(neg_qual, tid, stamp) = tet_qual_heap.back();
     tet_qual_heap.pop_back();
 
-    assert(isfinite(neg_qual) && !isnan(neg_qual));
+    assert(std::isfinite(neg_qual) && !std::isnan(neg_qual));
     if (stamp < tet_time_stamps[tid] || tid >= T.size()) continue;
     // tid >= T size is possible because of shirnkage.
     // or it can be avoided by incrementing stamp[t] that is discarded

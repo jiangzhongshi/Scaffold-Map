@@ -385,19 +385,19 @@ template bool igl::dev::tet_tuple_multi_face_removal<Eigen::Matrix<int, 1, 4,
                                                                         int,
                                                                         int,
                                                                         bool,
-                                                                        std::__1::function<
+                                                                        std::function<
                                                                             double(
                                                                                 int,
                                                                                 int,
                                                                                 int,
                                                                                 int)>,
-                                                                        std::__1::function<
+                                                                        std::function<
                                                                             bool(
                                                                                 int,
                                                                                 int,
                                                                                 int,
                                                                                 int)>,
-                                                                        std::__1::vector<
+                                                                        std::vector<
                                                                             Eigen::Matrix<
                                                                                 int,
                                                                                 1,
@@ -405,7 +405,7 @@ template bool igl::dev::tet_tuple_multi_face_removal<Eigen::Matrix<int, 1, 4,
                                                                                 1,
                                                                                 1,
                                                                                 4>,
-                                                                            std::__1::allocator<
+                                                                            std::allocator<
                                                                                 Eigen::Matrix<
                                                                                     int,
                                                                                     1,
@@ -413,7 +413,7 @@ template bool igl::dev::tet_tuple_multi_face_removal<Eigen::Matrix<int, 1, 4,
                                                                                     1,
                                                                                     1,
                                                                                     4> > > &,
-                                                                        std::__1::vector<
+                                                                        std::vector<
                                                                             Eigen::Matrix<
                                                                                 int,
                                                                                 1,
@@ -421,7 +421,7 @@ template bool igl::dev::tet_tuple_multi_face_removal<Eigen::Matrix<int, 1, 4,
                                                                                 1,
                                                                                 1,
                                                                                 4>,
-                                                                            std::__1::allocator<
+                                                                            std::allocator<
                                                                                 Eigen::Matrix<
                                                                                     int,
                                                                                     1,
@@ -429,7 +429,7 @@ template bool igl::dev::tet_tuple_multi_face_removal<Eigen::Matrix<int, 1, 4,
                                                                                     1,
                                                                                     1,
                                                                                     4> > > &,
-                                                                        std::__1::vector<
+                                                                        std::vector<
                                                                             Eigen::Matrix<
                                                                                 int,
                                                                                 1,
@@ -437,7 +437,7 @@ template bool igl::dev::tet_tuple_multi_face_removal<Eigen::Matrix<int, 1, 4,
                                                                                 1,
                                                                                 1,
                                                                                 4>,
-                                                                            std::__1::allocator<
+                                                                            std::allocator<
                                                                                 Eigen::Matrix<
                                                                                     int,
                                                                                     1,
@@ -445,7 +445,7 @@ template bool igl::dev::tet_tuple_multi_face_removal<Eigen::Matrix<int, 1, 4,
                                                                                     1,
                                                                                     1,
                                                                                     4> > > &,
-                                                                        std::__1::vector<
+                                                                        std::vector<
                                                                             Eigen::Matrix<
                                                                                 int,
                                                                                 4,
@@ -453,7 +453,7 @@ template bool igl::dev::tet_tuple_multi_face_removal<Eigen::Matrix<int, 1, 4,
                                                                                 0,
                                                                                 4,
                                                                                 3>,
-                                                                            std::__1::allocator<
+                                                                            std::allocator<
                                                                                 Eigen::Matrix<
                                                                                     int,
                                                                                     4,
@@ -461,9 +461,9 @@ template bool igl::dev::tet_tuple_multi_face_removal<Eigen::Matrix<int, 1, 4,
                                                                                     0,
                                                                                     4,
                                                                                     3> > > &,
-                                                                        std::__1::vector<
+                                                                        std::vector<
                                                                             int,
-                                                                            std::__1::allocator<
+                                                                            std::allocator<
                                                                                 int> > &);
 
 template bool igl::dev::tet_tuple_multi_face_removal_force<Eigen::Matrix<int,
@@ -494,31 +494,31 @@ template bool igl::dev::tet_tuple_multi_face_removal_force<Eigen::Matrix<int,
     int,
     int,
     bool,
-    std::__1::function<double(int, int, int, int)>,
-    std::__1::function<bool(int, int, int, int)>,
-    std::__1::vector<Eigen::Matrix<int, 1, 4, 1, 1, 4>,
-                     std::__1::allocator<Eigen::Matrix<int,
+    std::function<double(int, int, int, int)>,
+    std::function<bool(int, int, int, int)>,
+    std::vector<Eigen::Matrix<int, 1, 4, 1, 1, 4>,
+                     std::allocator<Eigen::Matrix<int,
                                                        1,
                                                        4,
                                                        1,
                                                        1,
                                                        4> > > &,
-    std::__1::vector<Eigen::Matrix<int, 1, 4, 1, 1, 4>,
-                     std::__1::allocator<Eigen::Matrix<int,
+    std::vector<Eigen::Matrix<int, 1, 4, 1, 1, 4>,
+                     std::allocator<Eigen::Matrix<int,
                                                        1,
                                                        4,
                                                        1,
                                                        1,
                                                        4> > > &,
-    std::__1::vector<Eigen::Matrix<int, 1, 4, 1, 1, 4>,
-                     std::__1::allocator<Eigen::Matrix<int,
+    std::vector<Eigen::Matrix<int, 1, 4, 1, 1, 4>,
+                     std::allocator<Eigen::Matrix<int,
                                                        1,
                                                        4,
                                                        1,
                                                        1,
                                                        4> > > &,
-    std::__1::vector<Eigen::Matrix<int, 4, 3, 0, 4, 3>,
-                     std::__1::allocator<Eigen::Matrix<int,
+    std::vector<Eigen::Matrix<int, 4, 3, 0, 4, 3>,
+                     std::allocator<Eigen::Matrix<int,
                                                        4,
                                                        3,
                                                        0,
