@@ -10,7 +10,7 @@ matrix:
         - wget --no-check-certificate -P libigl/external/nanogui/ext/glfw/include/GL http://www.opengl.org/registry/api/GL/glcorearb.h
         - mkdir build
         - cd build
-        - cmake -DLIBIGL_USE_STATIC_LIBRARY=ON -DCMAKE_CXX_COMPILER=g++-4.8 -DCMAKE_C_COMPILER=gcc-4.8 ../
+        - cmake -DLIBIGL_USE_STATIC_LIBRARY=ON -DCMAKE_CXX_COMPILER=g++-6 -DCMAKE_C_COMPILER=gcc-6 ../
         - make -j 2
       addons:
         apt:
@@ -20,7 +20,8 @@ matrix:
           packages:
             - xorg-dev
             - libglu1-mesa-dev
-            - g++-4.8
+            - g++-6
+            - gcc-6
             - cmake
             - cmake-data
             - libblas-dev
