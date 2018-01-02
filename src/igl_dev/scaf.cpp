@@ -46,8 +46,10 @@
 #include <igl/unique.h>
 #include <igl/vector_area_matrix.h>
 #include <igl/volume.h>
+#include <igl/writeOBJ.h>
 #include <iostream>
 #include <map>
+#include <algorithm>
 #include <set>
 #include <vector>
 
@@ -500,9 +502,142 @@ void mesh_improve(igl::SCAFData &s)
 }
 
 
+  void add_new_patch(igl::SCAFData &s, const Eigen::MatrixXd &V_in,
+                     const Eigen::MatrixXi &F_ref,
+                     const Eigen::RowVectorXd &center)
+  {
+    using namespace std;
+    using namespace Eigen;
+
+    VectorXd M;
+    igl::doublearea(V_in, F_ref, M);
+
+    Eigen::MatrixXd V_ref = V_in; // / sqrt(M.sum()/2/igl::PI);
+    // M /= M.sum()/igl::PI;
+    Eigen::MatrixXd uv_init;
+    Eigen::VectorXi bnd;
+    Eigen::MatrixXd bnd_uv;
+
+    std::vector<std::vector<int>> all_bnds;
+    igl::boundary_loop(F_ref, all_bnds);
+    int num_holes = all_bnds.size() - 1;
+
+    std::sort(all_bnds.begin(), all_bnds.end(), [](auto &a, auto &b) {
+      return a.size() > b.size();});
+
+    bnd = Map<Eigen::VectorXi>(all_bnds[0].data(), all_bnds[0].size());
+
+    igl::map_vertices_to_circle(V_ref, bnd, bnd_uv);
+    bnd_uv *= sqrt(M.sum() / (2 * igl::PI));
+    bnd_uv.rowwise() += center;
+    s.mesh_measure += M.sum() / 2;
+    std::cout << "Mesh Measure" << M.sum() / 2 << std::endl;
+
+    if (num_holes == 0)
+    {
+      if (bnd.rows() == V_ref.rows())
+      {
+        std::cout << "All vert on boundary" << std::endl;
+        uv_init.resize(V_ref.rows(), 2);
+        for (int i = 0; i < bnd.rows(); i++)
+        {
+          uv_init.row(bnd(i)) = bnd_uv.row(i);
+        }
+      }
+      else
+      {
+        igl::harmonic(V_ref, F_ref, bnd, bnd_uv, 1, uv_init);
+        if (igl::flipped_triangles(uv_init, F_ref).size() != 0)
+        {
+          std::cout << "Using Uniform Laplacian" << std::endl;
+          igl::harmonic(F_ref, bnd, bnd_uv, 1, uv_init); // use uniform laplacian
+        }
+      }
+    }
+    else
+    {
+      auto &F = F_ref;
+      auto &V = V_in;
+      auto &primary_bnd = bnd;
+      // fill holes
+      int n_filled_faces = 0;
+      int real_F_num = F.rows();
+      for (int i = 0; i < num_holes; i++)
+      {
+        n_filled_faces += all_bnds[i + 1].size();
+      }
+      MatrixXi F_filled(n_filled_faces + real_F_num, 3);
+      F_filled.topRows(real_F_num) = F;
+
+      int new_vert_id = V.rows();
+      int new_face_id = real_F_num;
+
+      for (int i = 0; i < num_holes; i++)
+      {
+        int cur_bnd_size = all_bnds[i + 1].size();
+        auto it = all_bnds[i + 1].begin();
+        auto back = all_bnds[i + 1].end() - 1;
+        F_filled.row(new_face_id++) << *it, *back, new_vert_id;
+        while (it != back)
+        {
+          F_filled.row(new_face_id++)
+              << *(it + 1),
+              *(it), new_vert_id;
+          it++;
+        }
+        new_vert_id++;
+      }
+      assert(new_face_id == F_filled.rows());
+      assert(new_vert_id == V.rows() + num_holes);
+
+      igl::harmonic(F_filled, primary_bnd, bnd_uv, 1, uv_init);
+      uv_init.conservativeResize(V.rows(), 2);
+      if (igl::flipped_triangles(uv_init, F_ref).size() != 0)
+      {
+        std::cout << "Wrong Choice of Outer bnd:" << std::endl;
+        //      assert(false&&"Wrong Choice of outer bnd?");
+      }
+    }
+
+    s.component_sizes.push_back(F_ref.rows());
+
+    MatrixXd m_uv = s.w_uv.topRows(s.mv_num);
+    igl::cat(1, m_uv, uv_init, s.w_uv);
+    //  s.mv_num =  s.w_uv.rows();
+
+    s.m_M.conservativeResize(s.mf_num + M.size());
+    s.m_M.bottomRows(M.size()) = M / 2;
+
+    //  internal_bnd.conservativeResize(internal_bnd.size()+ bnd.size());
+    //  internal_bnd.bottomRows(bnd.size()) = bnd.array() + s.mv_num;
+    //  bnd_sizes.push_back(bnd.size());
+
+    for (auto cur_bnd : all_bnds)
+    {
+      s.internal_bnd.conservativeResize(s.internal_bnd.size() + cur_bnd.size());
+      s.internal_bnd.bottomRows(cur_bnd.size()) =
+          Map<ArrayXi>(cur_bnd.data(), cur_bnd.size()) + s.mv_num;
+      s.bnd_sizes.push_back(cur_bnd.size());
+    }
+
+    s.m_T.conservativeResize(s.mf_num + F_ref.rows(), 3);
+    s.m_T.bottomRows(F_ref.rows()) = F_ref.array() + s.mv_num;
+    s.mf_num += F_ref.rows();
+
+    s.m_V.conservativeResize(s.mv_num + V_ref.rows(), 3);
+    s.m_V.bottomRows(V_ref.rows()) = V_ref;
+    s.mv_num += V_ref.rows();
+
+    s.rect_frame_V = MatrixXd();
+
+    mesh_improve(s);
+  }
+
+
 void add_new_patch(igl::SCAFData &s, const Eigen::MatrixXd &V_in,
   const Eigen::MatrixXi &F_ref,
-  const Eigen::RowVectorXd &center)
+  const Eigen::RowVectorXd &center,
+  const Eigen::MatrixXd& uv_input)
 {
   using namespace std;
   using namespace Eigen;
@@ -525,13 +660,11 @@ void add_new_patch(igl::SCAFData &s, const Eigen::MatrixXd &V_in,
 
   bnd = Map<Eigen::VectorXi>(all_bnds[0].data(), all_bnds[0].size());
 
-  igl::map_vertices_to_circle(V_ref, bnd, bnd_uv);
-  bnd_uv *= sqrt(M.sum() / (2 * igl::PI));
-  bnd_uv.rowwise() += center;
   s.mesh_measure += M.sum() / 2;
   std::cout << "Mesh Measure" << M.sum() / 2 << std::endl;
 
-  if (num_holes == 0)
+  uv_init = uv_input;
+  if (false)
   {
     if (bnd.rows() == V_ref.rows())
     {
@@ -552,50 +685,7 @@ void add_new_patch(igl::SCAFData &s, const Eigen::MatrixXd &V_in,
       }
     }
   }
-  else
-  {
-  auto &F = F_ref;
-  auto &V = V_in;
-  auto &primary_bnd = bnd;
-  // fill holes
-  int n_filled_faces = 0;
-  int real_F_num = F.rows();
-  for (int i = 0; i < num_holes; i++)
-  {
-  n_filled_faces += all_bnds[i + 1].size();
-  }
-  MatrixXi F_filled(n_filled_faces + real_F_num, 3);
-  F_filled.topRows(real_F_num) = F;
-
-  int new_vert_id = V.rows();
-  int new_face_id = real_F_num;
-
-  for (int i = 0; i < num_holes; i++)
-  {
-  int cur_bnd_size = all_bnds[i + 1].size();
-  auto it = all_bnds[i + 1].begin();
-  auto back = all_bnds[i + 1].end() - 1;
-  F_filled.row(new_face_id++) << *it, *back, new_vert_id;
-  while (it != back)
-  {
-  F_filled.row(new_face_id++)
-  << *(it + 1),
-  *(it), new_vert_id;
-  it++;
-  }
-  new_vert_id++;
-  }
-  assert(new_face_id == F_filled.rows());
-  assert(new_vert_id == V.rows() + num_holes);
-
-  igl::harmonic(F_filled, primary_bnd, bnd_uv, 1, uv_init);
-  uv_init.conservativeResize(V.rows(), 2);
-  if (igl::flipped_triangles(uv_init, F_ref).size() != 0)
-  {
-  std::cout << "Wrong Choice of Outer bnd:" << std::endl;
-  //      assert(false&&"Wrong Choice of outer bnd?");
-  }
-  }
+ 
 
   s.component_sizes.push_back(F_ref.rows());
 
@@ -625,7 +715,7 @@ void add_new_patch(igl::SCAFData &s, const Eigen::MatrixXd &V_in,
   s.m_V.conservativeResize(s.mv_num + V_ref.rows(), 3);
   s.m_V.bottomRows(V_ref.rows()) = V_ref;
   s.mv_num += V_ref.rows();
-
+  
   s.rect_frame_V = MatrixXd();
 
   mesh_improve(s);
@@ -1333,6 +1423,72 @@ void buildRhs(const Eigen::VectorXd &sqrt_M,
   }
 }
 
+void sparse_slice(Eigen::SparseMatrix<double> & A,
+                  const Eigen::VectorXi & unknown_ids,
+                  const Eigen::VectorXi &known_ids,
+                  Eigen::SparseMatrix<double>& Au, Eigen::SparseMatrix<double> & Ae)
+{
+  using namespace Eigen;
+  using TY = double;
+  using TX = double;
+  auto &X = A;
+
+  int xm = X.rows();
+  int xn = X.cols();
+  int ym = xm;
+  int yn = unknown_ids.size();
+  int ykn = known_ids.size();
+
+  std::vector<int> CI(xn, -1);
+  std::vector<int> CKI(xn, -1);
+  // initialize to -1
+  for (int i = 0; i < yn; i++)
+    CI[unknown_ids(i)] = (i);
+  for (int i = 0; i < ykn; i++)
+    CKI[known_ids(i)] = i;
+  Eigen::DynamicSparseMatrix<TY, Eigen::ColMajor> dyn_Y(ym, yn);
+  Eigen::DynamicSparseMatrix<TY, Eigen::ColMajor> dyn_K(ym, ykn);
+  // Take a guess at the number of nonzeros (this assumes uniform distribution
+  // not banded or heavily diagonal)
+  dyn_Y.reserve(A.nonZeros());
+  dyn_K.reserve(A.nonZeros() * ykn / xn);
+  // Iterate over outside
+  for (int k = 0; k < X.outerSize(); ++k)
+  {
+    // Iterate over inside
+    if (CI[k] != -1)
+      for (typename Eigen::SparseMatrix<double>::InnerIterator it(X, k); it;
+           ++it)
+      {
+        dyn_Y.coeffRef(it.row(), CI[it.col()]) = it.value();
+      }
+    else
+      for (typename Eigen::SparseMatrix<TX>::InnerIterator it(X, k); it;
+           ++it)
+      {
+        dyn_K.coeffRef(it.row(), CKI[it.col()]) = it.value();
+      }
+  }
+  Au = Eigen::SparseMatrix<TY>(dyn_Y);
+  Ae = Eigen::SparseMatrix<double>(dyn_K);
+}
+
+void get_complement(const Eigen::VectorXi& bnd_ids, int v_n, Eigen::ArrayXi& unknown_ids)
+{ // get the complement of bnd_ids.
+  int assign = 0, i = 0;
+  for (int get = 0; i < v_n && get < bnd_ids.size(); i++)
+{
+  if (bnd_ids(get) == i)
+  get++;
+  else
+  unknown_ids(assign++) = i;
+}
+  while (i < v_n)
+  unknown_ids(assign++) = i++;
+  assert(assign + bnd_ids.size() == v_n);
+}
+
+
 void build_surface_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double> &L, Eigen::VectorXd &rhs)
 {
 
@@ -1361,17 +1517,50 @@ void build_surface_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double>
     buildAm(sqrtM, decoy_Dx_m, decoy_Dy_m, decoy_Dz_m, d_.W_m, A);
   }
 
-  Eigen::SparseMatrix<double> At = A.transpose();
-  At.makeCompressed();
+  const VectorXi & bnd_ids = d_.fixed_ids;
+  auto bnd_n = bnd_ids.size();
+  if (bnd_n == 0) {
 
-  Eigen::SparseMatrix<double> id_m(At.rows(), At.rows());
-  id_m.setIdentity();
+    Eigen::SparseMatrix<double> At = A.transpose();
+    At.makeCompressed();
 
-  L = At * A;
+    Eigen::SparseMatrix<double> id_m(At.rows(), At.rows());
+    id_m.setIdentity();
 
-  Eigen::VectorXd frhs;
-  buildRhs(sqrtM, d_.W_m, d_.Ri_m, frhs);
-  rhs = At * frhs;
+    L = At * A;
+
+    Eigen::VectorXd frhs;
+    buildRhs(sqrtM, d_.W_m, d_.Ri_m, frhs);
+    rhs = At * frhs;
+  } else {
+    MatrixXd bnd_pos;
+    igl::slice(d_.w_uv, bnd_ids, 1, bnd_pos);
+    ArrayXi known_ids(bnd_ids.size() * dim);
+    ArrayXi unknown_ids((v_n - bnd_ids.rows()) * dim);
+    get_complement(bnd_ids, v_n, unknown_ids);
+    VectorXd known_pos(bnd_ids.size() * dim);
+    for (int d = 0; d < dim; d++)
+    {
+      auto n_b = bnd_ids.rows();
+      known_ids.segment(d * n_b, n_b) = bnd_ids.array() + d * v_n;
+      known_pos.segment(d * n_b, n_b) = bnd_pos.col(d);
+      unknown_ids.block(d * (v_n - n_b), 0, v_n - n_b, unknown_ids.cols()) =
+          unknown_ids.topRows(v_n - n_b) + d * v_n;
+    }
+
+    Eigen::SparseMatrix<double> Au, Ae;
+    sparse_slice(A, unknown_ids, known_ids, Au, Ae);
+
+    Eigen::SparseMatrix<double> Aut = Au.transpose();
+    Aut.makeCompressed();
+
+    L = Aut * Au;
+
+    Eigen::VectorXd frhs;
+    buildRhs(sqrtM, d_.W_m, d_.Ri_m, frhs);
+
+    rhs = Aut * (frhs - Ae * known_pos);
+  }
 
   // add soft constraints.
   for (auto const &x : d_.soft_cons)
@@ -1402,7 +1591,9 @@ void build_scaffold_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double
   else
     buildAm(sqrtM, d_.Dx_s, d_.Dy_s, d_.Dz_s, d_.W_s, A);
 
-  const VectorXi &bnd_ids = d_.frame_ids;
+//  const VectorXi &bnd_ids = d_.frame_ids;
+  VectorXi bnd_ids;
+  igl::cat(1, d_.fixed_ids, d_.frame_ids, bnd_ids);
 
   auto bnd_n = bnd_ids.size();
   assert(bnd_n > 0);
@@ -1412,19 +1603,7 @@ void build_scaffold_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double
   ArrayXi known_ids(bnd_ids.size() * dim);
   ArrayXi unknown_ids((v_n - bnd_ids.rows()) * dim);
 
-  { // get the complement of bnd_ids.
-    int assign = 0, i = 0;
-    for (int get = 0; i < v_n && get < bnd_ids.size(); i++)
-    {
-      if (bnd_ids(get) == i)
-        get++;
-      else
-        unknown_ids(assign++) = i;
-    }
-    while (i < v_n)
-      unknown_ids(assign++) = i++;
-    assert(assign + bnd_ids.size() == v_n);
-  }
+  get_complement(bnd_ids, v_n, unknown_ids);
 
   VectorXd known_pos(bnd_ids.size() * dim);
   for (int d = 0; d < dim; d++)
@@ -1440,56 +1619,10 @@ void build_scaffold_linear_system(const SCAFData &d_, Eigen::SparseMatrix<double
   // slice
   // 'manual slicing for A(:, unknown/known)'
   Eigen::SparseMatrix<double> Au, Ae;
-  {
-    using TY = double;
-    using TX = double;
-    auto &X = A;
-
-    int xm = X.rows();
-    int xn = X.cols();
-    int ym = xm;
-    int yn = unknown_ids.size();
-    int ykn = known_ids.size();
-
-    std::vector<int> CI(xn, -1);
-    std::vector<int> CKI(xn, -1);
-    // initialize to -1
-    for (int i = 0; i < yn; i++)
-      CI[unknown_ids(i)] = (i);
-    for (int i = 0; i < ykn; i++)
-      CKI[known_ids(i)] = i;
-    Eigen::DynamicSparseMatrix<TY, Eigen::ColMajor> dyn_Y(ym, yn);
-    Eigen::DynamicSparseMatrix<TY, Eigen::ColMajor> dyn_K(ym, ykn);
-    // Take a guess at the number of nonzeros (this assumes uniform distribution
-    // not banded or heavily diagonal)
-    dyn_Y.reserve(A.nonZeros());
-    dyn_K.reserve(A.nonZeros() * ykn / xn);
-    // Iterate over outside
-    for (int k = 0; k < X.outerSize(); ++k)
-    {
-      // Iterate over inside
-      if (CI[k] != -1)
-        for (typename Eigen::SparseMatrix<TX>::InnerIterator it(X, k); it;
-             ++it)
-        {
-          dyn_Y.coeffRef(it.row(), CI[it.col()]) = it.value();
-        }
-      else
-        for (typename Eigen::SparseMatrix<TX>::InnerIterator it(X, k); it;
-             ++it)
-        {
-          dyn_K.coeffRef(it.row(), CKI[it.col()]) = it.value();
-        }
-    }
-    Au = Eigen::SparseMatrix<TY>(dyn_Y);
-    Ae = Eigen::SparseMatrix<double>(dyn_K);
-  }
+  sparse_slice(A, unknown_ids, known_ids, Au, Ae);
 
   Eigen::SparseMatrix<double> Aut = Au.transpose();
   Aut.makeCompressed();
-
-  Eigen::SparseMatrix<double> id(Aut.rows(), Aut.rows());
-  id.setIdentity();
 
   L = Aut * Au;
 
@@ -1507,7 +1640,8 @@ void solve_weighted_arap(SCAFData &d_, Eigen::MatrixXd &uv)
   igl::Timer timer;
   timer.start();
 
-  const VectorXi &bnd_ids = d_.frame_ids;
+  VectorXi bnd_ids;
+  igl::cat(1, d_.fixed_ids, d_.frame_ids, bnd_ids);
   const auto v_n = d_.v_num;
   const auto bnd_n = bnd_ids.size();
   assert(bnd_n > 0);
@@ -1516,20 +1650,9 @@ void solve_weighted_arap(SCAFData &d_, Eigen::MatrixXd &uv)
 
   ArrayXi known_ids(bnd_n * dim);
   ArrayXi unknown_ids((v_n - bnd_n) * dim);
+//  std::cout<<bnd_ids<<std::endl;
 
-  { // get the complement of bnd_ids.
-    int assign = 0, i = 0;
-    for (int get = 0; i < v_n && get < bnd_ids.size(); i++)
-    {
-      if (bnd_ids(get) == i)
-        get++;
-      else
-        unknown_ids(assign++) = i;
-    }
-    while (i < v_n)
-      unknown_ids(assign++) = i++;
-    assert(assign + bnd_ids.size() == v_n);
-  }
+  get_complement(bnd_ids, v_n, unknown_ids);
 
   VectorXd known_pos(bnd_ids.size() * dim);
   for (int d = 0; d < dim; d++)
@@ -1571,7 +1694,7 @@ void solve_weighted_arap(SCAFData &d_, Eigen::MatrixXd &uv)
   rhs = rhs_m + rhs_s;
   L.makeCompressed();
 
-  Eigen::VectorXd unknown_Uc((v_n - d_.frame_ids.size()) * dim), Uc(dim * v_n);
+  Eigen::VectorXd unknown_Uc((v_n - d_.frame_ids.size() - d_.fixed_ids.size()) * dim), Uc(dim * v_n);
   bool solve_with_cg = (d_.dim == 3); // use CG in 3D
   if (solve_with_cg)
   {
@@ -1653,7 +1776,10 @@ IGL_INLINE void igl::scaf_precompute(
     igl::SCAFData &data,
     double soft_p)
 {
-  igl::scaf::add_new_patch(data, V, F, Eigen::RowVector2d(0, 0));
+  Eigen::MatrixXd CN;
+  Eigen::MatrixXi FN;
+  igl::writeOBJ("test_cup.obj",V,F,CN,FN,V_init,F);
+  igl::scaf::add_new_patch(data, V, F, Eigen::RowVector2d(0, 0),V_init);
   data.soft_const_p = soft_p;
 
   using namespace Eigen;
@@ -1735,7 +1861,7 @@ IGL_INLINE void igl::scaf_precompute(
   }
 }
 
-IGL_INLINE Eigen::MatrixXd igl::scaf_solve(SCAFData &d_, int iter_num)
+IGL_INLINE Eigen::MatrixXd igl::scaf_solve(SCAFData &d_, int iter_num, Eigen::VectorXi& cstrs)
 {
   using namespace std;
   using namespace Eigen;
@@ -1750,9 +1876,14 @@ IGL_INLINE Eigen::MatrixXd igl::scaf_solve(SCAFData &d_, int iter_num)
 
     igl::Timer timer;
     timer.start();
-
+    d_.rect_frame_V = Eigen::MatrixXd();
     igl::scaf::mesh_improve(d_);
 
+    d_.fixed_ids = cstrs;
+    for(int ii = 0; ii < d_.fixed_ids.rows(); ii++) {
+      int ffii =  d_.fixed_ids(ii);
+      std::cout<<"Required: "<< ffii<<" is "<<d_.w_uv.row(ffii)<<std::endl;
+    }
     double new_weight = d_.mesh_measure * last_mesh_energy / (d_.sf_num * 100);
     igl::scaf::adjust_scaf_weight(d_, new_weight);
 

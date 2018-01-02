@@ -33,8 +33,6 @@
 #include <igl/squared_edge_lengths.h>
 #include <igl/triangle/triangulate.h>
 #include <igl/viewer/Viewer.h>
-#include <igl/writeMESH.h>
-#include <igl/writeOBJ.h>
 #include <igl/write_triangle_mesh.h>
 #include <iostream>
 #include <memory>
@@ -44,7 +42,6 @@
 #define CUBE_PATH "../models/cube_cc1.obj"
 
 #ifndef IGLSCAF
-#define NOGUI
 int main(int argc, char* argv[]) {
   using namespace Eigen;
   using namespace std;
@@ -107,17 +104,18 @@ int main(int argc, char* argv[]) {
 #else 
 #include "igl_dev/scaf.h"
 #include <igl/readOBJ.h>
+#include <igl/writeOBJ.h>
 int main(int argc, char* argv[]) {
   using namespace Eigen;
   using namespace std;
   std::string filename = argv[1];
-  Eigen::MatrixXd V;
-  Eigen::MatrixXi F;
-  igl::readOBJ(filename,V,F);
+  Eigen::MatrixXd V, UV, CN;
+  Eigen::MatrixXi F, FTC, FN;
+  igl::readOBJ(filename,V,UV, CN, F, FTC, FN);
   // VectorXd M;
   // igl::doublearea(V, F, M);
 
-  Eigen::MatrixXd uv_init;
+  Eigen::MatrixXd uv_init = UV;
   // Eigen::VectorXi bnd; Eigen::MatrixXd bnd_uv;
   // igl::boundary_loop(F,bnd);
   // igl::map_vertices_to_circle(V,bnd,bnd_uv);
@@ -125,8 +123,12 @@ int main(int argc, char* argv[]) {
 
   igl::SCAFData d_;
   igl::scaf_precompute(V,F,uv_init, d_, 0);
-  igl::scaf_solve(d_, 50);
+  Eigen::VectorXi fixed;
+  // you can optionally specify fixed UV points here
+  igl::scaf_solve(d_, 50, fixed);
 
+  Eigen::MatrixXd out_UV = d_.w_uv.topRows(UV.rows());
+  igl::writeOBJ(filename + "_out.obj", V, F, CN, FN, out_UV, F);
   return 0;
 }
 #endif

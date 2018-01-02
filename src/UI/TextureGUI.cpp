@@ -38,7 +38,7 @@ s_(state), d_(state.scaf_data) {
   using namespace Eigen;
   using igl_viewer = igl::viewer::Viewer;
 
-  igl::png::readPNG("/Users/zhongshi/Desktop/texture_bb.png",texture_R,
+  igl::png::readPNG("../texture_bb.png",texture_R,
                     texture_G, texture_B, texture_A);
 
   v_.callback_pre_draw = [this](igl_viewer&) {

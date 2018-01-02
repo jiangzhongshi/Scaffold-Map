@@ -21,9 +21,9 @@ namespace igl
       int dim = 2;
       double energy; // objective value
 
-      long mv_num, mf_num;
-      long sv_num, sf_num;
-      long v_num, f_num;
+      long mv_num = 0, mf_num = 0;
+      long sv_num = 0, sf_num = 0;
+      long v_num{}, f_num = 0;
       Eigen::MatrixXd m_V; // input initial mesh V
       Eigen::MatrixXi m_T; // input initial mesh F/T
       // INTERNAL
@@ -39,6 +39,7 @@ namespace igl
       double proximal_p = 0;
 
       Eigen::VectorXi frame_ids;
+      Eigen::VectorXi fixed_ids;
 
       std::map<int, Eigen::RowVectorXd> soft_cons;
       double soft_const_p = 1e4;
@@ -92,7 +93,8 @@ namespace igl
 // Run iter_num iterations of SCAF
 // Outputs:
 //    V_o (in SLIMData): #V by dim list of mesh vertex positions
-    IGL_INLINE Eigen::MatrixXd scaf_solve(SCAFData &data, int iter_num);
+  IGL_INLINE Eigen::MatrixXd scaf_solve(SCAFData &data, int iter_num);
+  IGL_INLINE Eigen::MatrixXd scaf_solve(SCAFData &data, int iter_num, Eigen::VectorXi& cstrs);
 
   }
 

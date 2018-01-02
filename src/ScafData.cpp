@@ -491,7 +491,7 @@ void ScafData::add_new_patch(const Eigen::MatrixXd &V_in,
 
   rect_frame_V = MatrixXd();
 
-  mesh_improve();
+  mesh_improve(true);
 }
 
 ScafData::ScafData() {

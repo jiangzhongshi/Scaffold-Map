@@ -16,3 +16,5 @@ src/autodiff.h
 src/example.cpp
 test/
 .DS_Store
+
+\.vscode/
