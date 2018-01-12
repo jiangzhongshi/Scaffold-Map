@@ -40,6 +40,8 @@ namespace igl
 
       Eigen::VectorXi frame_ids;
       Eigen::VectorXi fixed_ids;
+      Eigen::VectorXi fixed_X_ids;
+      Eigen::VectorXi fixed_Y_ids;
 
       std::map<int, Eigen::RowVectorXd> soft_cons;
       double soft_const_p = 1e4;
@@ -94,7 +96,7 @@ namespace igl
 // Outputs:
 //    V_o (in SLIMData): #V by dim list of mesh vertex positions
   IGL_INLINE Eigen::MatrixXd scaf_solve(SCAFData &data, int iter_num);
-  IGL_INLINE Eigen::MatrixXd scaf_solve(SCAFData &data, int iter_num, Eigen::VectorXi& cstrs);
+  IGL_INLINE Eigen::MatrixXd scaf_solve(SCAFData &data, int iter_num, const Eigen::VectorXi& fixed_X, const Eigen::VectorXi& fixed_Y);
 
   }
 

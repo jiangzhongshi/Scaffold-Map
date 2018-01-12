@@ -41,6 +41,7 @@
 #define MODEL_PATH "../models/bumpy.off"
 #define CUBE_PATH "../models/cube_cc1.obj"
 
+#define IGLSCAF
 #ifndef IGLSCAF
 int main(int argc, char* argv[]) {
   using namespace Eigen;
@@ -123,9 +124,11 @@ int main(int argc, char* argv[]) {
 
   igl::SCAFData d_;
   igl::scaf_precompute(V,F,uv_init, d_, 0);
-  Eigen::VectorXi fixed;
+  Eigen::VectorXi fixX(3);
+  fixX << 10, 20, 70;
+  Eigen::VectorXi fixY;
   // you can optionally specify fixed UV points here
-  igl::scaf_solve(d_, 50, fixed);
+  igl::scaf_solve(d_, 50, fixX, fixY);
 
   Eigen::MatrixXd out_UV = d_.w_uv.topRows(UV.rows());
   igl::writeOBJ(filename + "_out.obj", V, F, CN, FN, out_UV, F);
