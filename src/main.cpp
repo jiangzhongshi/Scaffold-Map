@@ -41,6 +41,7 @@
 #define MODEL_PATH "../models/bumpy.off"
 #define CUBE_PATH "../models/cube_cc1.obj"
 
+#define IGLSCAF
 #ifndef IGLSCAF
 int main(int argc, char* argv[]) {
   using namespace Eigen;
