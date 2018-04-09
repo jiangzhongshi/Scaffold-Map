@@ -3,14 +3,14 @@ sudo: false
 matrix:
   include:
     - os: linux
-      compiler: gcc-4.8.1
+      compiler: gcc-6
       script:
         - git submodule update --init --recursive
         - mkdir libigl/external/nanogui/ext/glfw/include/GL
         - wget --no-check-certificate -P libigl/external/nanogui/ext/glfw/include/GL http://www.opengl.org/registry/api/GL/glcorearb.h
         - mkdir build
         - cd build
-        - cmake -DLIBIGL_USE_STATIC_LIBRARY=ON -DCMAKE_CXX_COMPILER=g++-6 -DCMAKE_C_COMPILER=gcc-6 ../
+        - cmake -DCMAKE_CXX_COMPILER=g++-6 -DCMAKE_C_COMPILER=gcc-6 ../
         - make -j 2
       addons:
         apt:
@@ -45,5 +45,5 @@ matrix:
         - git submodule update --init --recursive
         - mkdir build
         - cd build
-        - cmake -DLIBIGL_USE_STATIC_LIBRARY=ON ../
+        - cmake ../
         - make -j 2
