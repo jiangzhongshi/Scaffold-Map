@@ -89,10 +89,10 @@ struct face_removal_neighbor_test {
                     T, TT, TTif, TTie,
                     a, b, tet_quality, orient3D);
 
-        auto q_old = std::min({tet_quality(a, u, v, w), tet_quality(u, v, w,
+        auto q_old = (std::min)({tet_quality(a, u, v, w), tet_quality(u, v, w,
                                                                     b),
                                o_uv, o_vw});
-        auto q_new = std::min(n_uv, n_vw);
+        auto q_new = (std::min)(n_uv, n_vw);
 
         if (q_new > q_old || q_new > q_uw) {
 //        one_ring_of_removal.insert(current_pos, v);
@@ -150,7 +150,7 @@ bool tet_tuple_multi_face_removal(int ti,
     igl::dev::tet_tuple_switch_edge(t, f, e, a, T, TT, TTif, TTie);
     apex_b = igl::dev::tet_tuple_get_vert(t, f, e, !a,
                                           T, TT, TTif, TTie);
-    q_old = std::min(q_old, tet_quality(T[t](0), T[t](1), T[t](2), T[t](3)));
+    q_old = (std::min)(q_old, tet_quality(T[t](0), T[t](1), T[t](2), T[t](3)));
   }
 
   assert(q_old > 0);
@@ -168,8 +168,8 @@ bool tet_tuple_multi_face_removal(int ti,
         neighbor_test.recurse(ti, fi, e, ai, T, TT, TTif, TTie, apex_a, apex_b,
                               tet_quality, orient3D);
 
-    q_old = std::min(q_old, local_q_old);
-    q_new = std::min(q_new, local_q_new);
+    q_old = (std::min)(q_old, local_q_old);
+    q_new = (std::min)(q_new, local_q_new);
     polygon.splice(polygon.end(), added_points);
     delete_faces.splice(delete_faces.end(), local_del_faces);
   }
@@ -288,7 +288,7 @@ bool tet_tuple_multi_face_removal_force(int ti,
     igl::dev::tet_tuple_switch_edge(t, f, e, a, T, TT, TTif, TTie);
     apex_b = igl::dev::tet_tuple_get_vert(t, f, e, !a,
                                           T, TT, TTif, TTie);
-    q_old = std::min(q_old, tet_quality(T[t](0), T[t](1), T[t](2), T[t](3)));
+    q_old = (std::min)(q_old, tet_quality(T[t](0), T[t](1), T[t](2), T[t](3)));
   }
 
   assert(q_old > 0);
@@ -306,8 +306,8 @@ bool tet_tuple_multi_face_removal_force(int ti,
         neighbor_test.recurse(ti, fi, e, ai, T, TT, TTif, TTie, apex_a, apex_b,
                               tet_quality, orient3D);
 
-    q_old = std::min(q_old, local_q_old);
-    q_new = std::min(q_new, local_q_new);
+    q_old = (std::min)(q_old, local_q_old);
+    q_new = (std::min)(q_new, local_q_new);
     polygon.splice(polygon.end(), added_points);
     delete_faces.splice(delete_faces.end(), local_del_faces);
   }

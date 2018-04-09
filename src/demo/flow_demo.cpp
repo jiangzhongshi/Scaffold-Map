@@ -87,7 +87,7 @@ void leg_flow_initializer(Eigen::MatrixXd &mTV,
     double min_q = INFINITY;
     for (auto i=0; i<sTT.rows(); i++) {
       RowVector4i r = sTT.row(i);
-      min_q = std::min(min_q, tet_quality(r(0), r(1), r(2), r(3)));
+      min_q = (std::min)(min_q, tet_quality(r(0), r(1), r(2), r(3)));
     }
     cout << endl << "q_in" << min_q << '\t';
     assert(min_q > 0);

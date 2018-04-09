@@ -174,7 +174,7 @@ void ScafData::mesh_improve(bool in_packing = false) {
     {
       double old_q = INFINITY;
       for (auto r:T)
-        old_q = std::min(old_q, tet_quality(r(0), r(1), r(2), r(3)));
+        old_q = (std::min)(old_q, tet_quality(r(0), r(1), r(2), r(3)));
       cout << endl << "q" << old_q << '\t';
     }
     combined_improvement_pass(tet_quality, orient3D,
@@ -186,7 +186,7 @@ void ScafData::mesh_improve(bool in_packing = false) {
     {
       double old_q = INFINITY;
       for (auto r:T)
-        old_q = std::min(old_q, tet_quality(r(0), r(1), r(2), r(3)));
+        old_q = (std::min)(old_q, tet_quality(r(0), r(1), r(2), r(3)));
       cout << "q" << old_q << '\t';
     }
 //  face_removal_pass(tet_quality, orient3D, T, TT, TTif, TTie);
@@ -196,7 +196,7 @@ void ScafData::mesh_improve(bool in_packing = false) {
     {
       double old_q = INFINITY;
       for (auto r:T)
-        old_q = std::min(old_q, tet_quality(r(0), r(1), r(2), r(3)));
+        old_q = (std::min)(old_q, tet_quality(r(0), r(1), r(2), r(3)));
       cout << "q" << old_q << endl;
     }
 

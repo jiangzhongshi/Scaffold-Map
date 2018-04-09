@@ -411,7 +411,7 @@ void triangle_improving_edge_flip(const Eigen::MatrixXd &V,
         E(e, 1), EV(e, 0), EV(e, 1);
     Eigen::MatrixXd len;
     igl::edge_lengths(V, F0, len);
-    return std::min(quality_by_length(len(0, 0),
+    return (std::min)(quality_by_length(len(0, 0),
                                       len(0, 1),
                                       len(0, 2)),
                     quality_by_length(len(1, 0),
@@ -420,7 +420,7 @@ void triangle_improving_edge_flip(const Eigen::MatrixXd &V,
 
   };
   auto quality_improvement = [&](size_t e) -> double {
-    double before = std::min(flap_qual(e, 0), flap_qual(e, 1));
+    double before = (std::min)(flap_qual(e, 0), flap_qual(e, 1));
     double after = min_qlty_after(e);
     return after - before;
   };

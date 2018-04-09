@@ -39,8 +39,8 @@ inline void soft_cat(
   }
 
   C = SparseMatrix<Scalar>(
-      dim == 1 ? A.rows() + B.rows() : std::max(A.rows(), B.rows()),
-      dim == 1 ? std::max(A.cols(), B.cols()) : A.cols() + B.cols());
+      dim == 1 ? A.rows() + B.rows() : (std::max)(A.rows(), B.rows()),
+      dim == 1 ? (std::max)(A.cols(), B.cols()) : A.cols() + B.cols());
   Eigen::VectorXi per_col = Eigen::VectorXi::Zero(C.cols());
   if (dim == 1) {
     for (int k = 0; k < A.outerSize(); ++k)

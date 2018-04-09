@@ -311,12 +311,12 @@ void SchaeferNewtonParametrizer::precompute(const Eigen::MatrixXi &F) {
         int current_size = d_.bnd_sizes[i];
 
         for(int e=acc_bnd; e<acc_bnd + current_size - 1; e++) {
-          min_bnd_edge_len = std::min(min_bnd_edge_len,
+          min_bnd_edge_len = (std::min)(min_bnd_edge_len,
                                       (d_.w_uv.row(d_.internal_bnd(e)) -
                                           d_.w_uv.row(d_.internal_bnd(e+1)))
                                           .squaredNorm());
         }
-        min_bnd_edge_len = std::min(min_bnd_edge_len,
+        min_bnd_edge_len = (std::min)(min_bnd_edge_len,
                                     (d_.w_uv.row(d_.internal_bnd(acc_bnd)) -
                                         d_.w_uv.row(d_.internal_bnd(acc_bnd +current_size -
                                             1))).squaredNorm());
@@ -402,7 +402,7 @@ bool SchaeferNewtonParametrizer::check_gradient(const Eigen::MatrixXd& V, const 
     bool correct = true;
 
     for (int d = 0; d < D; ++d) {
-      double scale = std::max(std::max(fabs(actual_grad[d]), fabs(expected_grad[d])), 1.);
+      double scale = (std::max)((std::max)(fabs(actual_grad[d]), fabs(expected_grad[d])), 1.);
       if(fabs(actual_grad[d]-expected_grad[d])>1e-2 * scale)
         correct = false;
     	break;
@@ -529,7 +529,7 @@ bool SchaeferNewtonParametrizer::checkHessian(const Eigen::MatrixXd& V, const Ei
 
     for (int d = 0; d < D; ++d) {
       for (int e = 0; e < D; ++e) {
-        double scale = std::max(std::max(fabs(actual_hessian(d, e)), fabs(expected_hessian(d, e))), 1.);
+        double scale = (std::max)((std::max)(fabs(actual_hessian(d, e)), fabs(expected_hessian(d, e))), 1.);
         if(fabs(actual_hessian(d, e)- expected_hessian(d, e))>1e-1 * scale) {
         		cout << "not correct for d = " << d << " and e = " << e << endl;
         		correct = false;

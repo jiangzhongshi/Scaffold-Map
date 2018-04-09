@@ -76,13 +76,13 @@ bool tet_tuple_edge_contraction(int ti,
 
   double min_q0 = INFINITY;
   for (auto t0:new_tets0) {
-    min_q0 = std::min(min_q0, tet_quality(t0[0], t0[1], t0[2], t0[3]));
+    min_q0 = (std::min)(min_q0, tet_quality(t0[0], t0[1], t0[2], t0[3]));
   }
 
   double old_q = INFINITY;
   for (auto s:T1) {
     auto t0 = T[s];
-    old_q = std::min(old_q, tet_quality(t0[0], t0[1], t0[2], t0[3]));
+    old_q = (std::min)(old_q, tet_quality(t0[0], t0[1], t0[2], t0[3]));
   }
 
   if (old_q > min_q0) {
@@ -107,12 +107,12 @@ bool tet_tuple_edge_contraction(int ti,
 //      }
     double min_q1 = INFINITY;
     for (auto t0:new_tets1) {
-      min_q1 = std::min(min_q1, tet_quality(t0[0], t0[1], t0[2], t0[3]));
+      min_q1 = (std::min)(min_q1, tet_quality(t0[0], t0[1], t0[2], t0[3]));
     }
     double old_q = INFINITY;
     for (auto s:T1) {
       auto t0 = T[s];
-      old_q = std::min(old_q, tet_quality(t0[0], t0[1], t0[2], t0[3]));
+      old_q = (std::min)(old_q, tet_quality(t0[0], t0[1], t0[2], t0[3]));
     }
     if (old_q > min_q1) return false;
 
@@ -197,7 +197,7 @@ bool laplacian_smart_smoothing(
   double old_q = INFINITY;
   for (auto s:T_neighbor) {
     auto t0 = T[s];
-    old_q = std::min(old_q, tet_quality(t0[0], t0[1], t0[2], t0[3]));
+    old_q = (std::min)(old_q, tet_quality(t0[0], t0[1], t0[2], t0[3]));
     for (auto j:{0, 1, 2, 3})adj_verts.insert(t0[j]);
   }
   adj_verts.erase(v0);
@@ -212,7 +212,7 @@ bool laplacian_smart_smoothing(
   double new_q = INFINITY;
   for (auto s:T_neighbor) {
     auto t0 = T[s];
-    new_q = std::min(old_q, tet_quality(t0[0], t0[1], t0[2], t0[3]));
+    new_q = (std::min)(old_q, tet_quality(t0[0], t0[1], t0[2], t0[3]));
   }
   if (new_q <= old_q) {
     V[v0] = saved;
@@ -252,7 +252,7 @@ bool tet_tuple_edge_split(
   double min_qual_old = INFINITY;
   do {
     one_ring_tets.insert(t);
-    min_qual_old = std::min(min_qual_old, tet_quality(T[t](0), T[t](1),
+    min_qual_old = (std::min)(min_qual_old, tet_quality(T[t](0), T[t](1),
                                                       T[t](2), T[t](3)));
     one_ring_verts.push_back(igl::dev::tet_tuple_get_vert(t, f, e, false, T, TT,
                                                           TTif, TTie));
@@ -284,7 +284,7 @@ bool tet_tuple_edge_split(
 
   double min_qual_new = INFINITY;
   for (auto s:new_tets)
-    min_qual_new = std::min(min_qual_new,
+    min_qual_new = (std::min)(min_qual_new,
                             tet_quality(s[0], s[1], s[2], s[3]));
 
   // smart decision

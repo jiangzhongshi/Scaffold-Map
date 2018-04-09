@@ -28,8 +28,8 @@ inline double optimal_triangulation_Klincsek(std::vector<int> polygon,
     for (auto j = i + 2; j < m; j++)
       for (auto k = i + 1; k < j; k++) {
         auto q = quality(polygon[i], polygon[j], polygon[k]);
-        if (k < j - 1) q = std::min(q, Q_table(k, j));
-        if (k > i + 1) q = std::min(q, Q_table(i, k));
+        if (k < j - 1) q = (std::min)(q, Q_table(k, j));
+        if (k > i + 1) q = (std::min)(q, Q_table(i, k));
         if (k == i + 1 || q > Q_table(i, j)) {
           Q_table(i, j) = q;
           K_table(i, j) = k;
@@ -97,7 +97,7 @@ IGL_INLINE bool igl::dev::tet_tuple_edge_removal(int ti,
   double min_qual_old = INFINITY;
   do {
     one_ring_tets.insert(t);
-    min_qual_old = std::min(min_qual_old, tet_quality(T[t](0), T[t](1),
+    min_qual_old = (std::min)(min_qual_old, tet_quality(T[t](0), T[t](1),
                                                       T[t](2), T[t](3)));
     one_ring_verts.push_back(igl::dev::tet_tuple_get_vert(t, f, e, false, T, TT,
                                                           TTif, TTie));
@@ -117,7 +117,7 @@ IGL_INLINE bool igl::dev::tet_tuple_edge_removal(int ti,
   if (min_qual_old >
       optimal_triangulation_Klincsek(one_ring_verts, [&](int u, int v, int
                                      w) {
-                                       return std::min(tet_quality(vert_a, u, v, w),
+                                       return (std::min)(tet_quality(vert_a, u, v, w),
                                                        tet_quality(u, v, w, vert_b));
                                      },
                                      optimal_tri))
@@ -211,7 +211,7 @@ IGL_INLINE bool igl::dev::tet_tuple_edge_removal_force(int ti,
   double min_qual_old = INFINITY;
   do {
     one_ring_tets.insert(t);
-    min_qual_old = std::min(min_qual_old, tet_quality(T[t](0), T[t](1),
+    min_qual_old = (std::min)(min_qual_old, tet_quality(T[t](0), T[t](1),
                                                       T[t](2), T[t](3)));
     one_ring_verts.push_back(igl::dev::tet_tuple_get_vert(t, f, e, false, T, TT,
                                                           TTif, TTie));
@@ -230,7 +230,7 @@ IGL_INLINE bool igl::dev::tet_tuple_edge_removal_force(int ti,
   std::vector<Eigen::RowVector3i> optimal_tri;
   optimal_triangulation_Klincsek(one_ring_verts, [&](int u, int v, int
                                  w) {
-                                   return std::min(tet_quality(vert_a, u, v, w),
+                                   return (std::min)(tet_quality(vert_a, u, v, w),
                                                    tet_quality(u, v, w, vert_b));
                                  },
                                  optimal_tri);
