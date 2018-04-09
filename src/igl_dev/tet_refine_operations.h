@@ -48,4 +48,7 @@ bool tet_tuple_edge_split(int ti, int fi, int ei, bool ai,
                           std::vector<int> &new_tets_id);
 }
 }
+#ifndef IGL_STATIC_LIBRARY
+#include "tet_refine_operations.cpp"
+#endif
 #endif //SCAFFOLD_TEST_TETRAHEDRAL_REFINEMENT_H

@@ -19,7 +19,7 @@
 #include <igl/writeMESH.h>
 #include <igl/boundary_facets.h>
 #include <igl/writeOBJ.h>
-#include <stb_image_write.h>
+#include <igl_stb_image.h>
 #include <igl/png/readPNG.h>
 #include <igl/slice.h>
 
@@ -103,7 +103,7 @@ bool DeformGUI::render_to_png(const int width, const int height,
       pixels[j*stride + i] = data_fv[j_fl * stride + i];
     }
   }
-  bool ret = stbi_write_png(png_file.c_str(), width, height, comp, pixels.data(), stride*sizeof(unsigned char));
+  bool ret = igl::stbi_write_png(png_file.c_str(), width, height, comp, pixels.data(), stride*sizeof(unsigned char));
   delete [] data_fv;
   return ret;
 }

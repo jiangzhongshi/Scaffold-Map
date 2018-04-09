@@ -13,7 +13,6 @@
 #include "util/tet_utils.h" 
 #include "util/tetrahedral_improvement.h"
 #include "igl_dev/tetrahedron_tetrahedron_adjacency.h"
-#include "util/tetgenio_parser.h"
 #include "util/triangle_utils.h"
 #include <igl/cat.h>
 #include <igl/boundary_loop.h>

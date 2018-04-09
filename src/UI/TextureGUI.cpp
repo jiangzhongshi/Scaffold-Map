@@ -19,7 +19,7 @@
 #include <igl/Timer.h>
 #include <igl/read_triangle_mesh.h>
 #include <igl/png/writePNG.h>
-#include <stb_image_write.h>
+#include <igl_stb_image.h>
 #include <igl/png/readPNG.h>
 #include <igl/slice.h>
 #include <sstream>
@@ -97,7 +97,7 @@ const std::string png_file) {
         pixels[j*stride + i] = data_fv[j_fl * stride + i];
       }
     }
-    bool ret = stbi_write_png(png_file.c_str(), width, height, comp, pixels.data(), stride*sizeof(unsigned char));
+    bool ret = igl::stbi_write_png(png_file.c_str(), width, height, comp, pixels.data(), stride*sizeof(unsigned char));
     delete [] data_fv;
     return ret;
 }

@@ -18,5 +18,6 @@ IGL_INLINE void retain_tetrahedral_adjacency(
     std::vector<Eigen::RowVector4i>& TTif,
     std::vector<Eigen::Matrix<int, 4, 3>>& TTie);
 #ifndef IGL_STATIC_LIBRARY
+#include "retain_tetrahedral_adjacency.cpp"
 #endif
 #endif //SCAFFOLD_TEST_RETAIN_TETRAHEDRAL_ADJACENCY_H

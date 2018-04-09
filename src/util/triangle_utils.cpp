@@ -10,7 +10,6 @@
 #include <iostream>
 #include <igl/edge_flaps.h>
 #include <igl/harmonic.h>
-#include <igl/lim/lim.h>
 #include <igl/slice.h>
 #include <igl/edge_flaps.h>
 #include <igl/edge_lengths.h>

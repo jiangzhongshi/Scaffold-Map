@@ -13,6 +13,7 @@
 #include <vector>
 #include <Eigen/Core>
 
+#define REAL double
 
 namespace igl {
 namespace dev {

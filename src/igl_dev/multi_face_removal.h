@@ -38,4 +38,7 @@ bool tet_tuple_multi_face_removal_force(int ti,
                                   std::vector<DerivedTTif> &TTif,
                                   std::vector<DerivedTTie> &TTie);
 }}
+#ifndef IGL_STATIC_LIBRARY
+#include "multi_face_removal.cpp"
+#endif
 #endif //SCAFFOLD_TEST_MULTI_FACE_REMOVAL_H

@@ -2,7 +2,6 @@
 #include "StateManager.h"
 #include "UI/DeformGUI.h"
 #include "UI/TextureGUI.h"
-#include "util/tetgenio_parser.h"
 #include "util/triangle_utils.h"
 #include <algorithm>
 #include <igl/PI.h>

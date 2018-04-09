@@ -1,5 +1,10 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.0)
 project(scaffold-map)
+
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
@@ -23,7 +28,7 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
 
-option(LIBIGL_USE_STATIC_LIBRARY    "Use libigl as static library" ON)
+option(LIBIGL_USE_STATIC_LIBRARY    "Use libigl as static library" OFF)
 option(LIBIGL_WITH_ANTTWEAKBAR      "Use AntTweakBar"    OFF)
 option(LIBIGL_WITH_CGAL             "Use CGAL"           OFF)
 option(LIBIGL_WITH_COMISO           "Use CoMiso"         OFF)
@@ -41,11 +46,6 @@ option(LIBIGL_WITH_TRIANGLE         "Use Triangle"       ON)
 option(LIBIGL_WITH_VIEWER           "Use OpenGL viewer"  ON)
 option(LIBIGL_WITH_XML              "Use XML"            OFF)
 option(LIBIGL_WITH_PYTHON           "Use Python"         OFF)
-if(LIBIGL_WITH_CGAL) # Do not remove or move this block, the cgal build system fails without it
-  find_package(CGAL REQUIRED)
-  set(CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE CACHE BOOL "CGAL's CMAKE Setup is super annoying ")
-  include(${CGAL_USE_FILE})
-endif()
 
 option(NOGUI        "Just for Profiling"           OFF)
 
@@ -54,30 +54,19 @@ if(NOGUI)
 endif()
 # Adding libigl: choose the path to your local copy libigl
 # This is going to compile everything you requested 
-add_subdirectory("${LIBIGL_INCLUDE_DIR}/../shared/cmake" "libigl")
-
-# libigl information 
-message("libigl includes: ${LIBIGL_INCLUDE_DIRS}")
-message("libigl libraries: ${LIBIGL_LIBRARIES}")
-message("libigl extra sources: ${LIBIGL_EXTRA_SOURCES}")
-message("libigl extra libraries: ${LIBIGL_EXTRA_LIBRARIES}")
-message("libigl definitions: ${LIBIGL_DEFINITIONS}")
-
-# Prepare the build environment
-include_directories(${LIBIGL_INCLUDE_DIRS})
-add_definitions(${LIBIGL_DEFINITIONS})
-
+message(STATUS "${CMAKE_SOURCE_DIR}/libigl/shared/cmake")
+#set(LIBIGL_INCLUDE_DIR "${}")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/libigl/shared/cmake")
+include(libigl)
 # Add your project files
-set(SRC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 FILE(GLOB SRCFILES
     "src/*.cpp"
     "src/UI/*.cpp"
     "src/util/*.cpp"
     "src/demo/*.cpp"
-    "src/Newton/*.cpp"
-    "src/igl_dev/*.cpp")
+    "src/Newton/*.cpp")
 
-add_executable(${PROJECT_NAME}_bin ${SRCFILES} ${LIBIGL_EXTRA_SOURCES})
-target_link_libraries(${PROJECT_NAME}_bin ${LIBIGL_LIBRARIES} ${LIBIGL_EXTRA_LIBRARIES})
+add_executable(${PROJECT_NAME}_bin ${SRCFILES})
+target_link_libraries(${PROJECT_NAME}_bin igl::core igl::viewer igl::triangle igl::tetgen igl::png)
 

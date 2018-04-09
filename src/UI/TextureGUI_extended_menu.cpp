@@ -19,7 +19,6 @@
 #include <igl/Timer.h>
 #include <igl/read_triangle_mesh.h>
 #include <igl/png/writePNG.h>
-#include <stb_image_write.h>
 #include <igl/png/readPNG.h>
 #include <igl/slice.h>
 

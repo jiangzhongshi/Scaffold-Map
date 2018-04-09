@@ -98,4 +98,7 @@ namespace igl
 
   }
 
+#ifndef IGL_STATIC_LIBRARY
+#include "scaf.cpp"
+#endif
 #endif //SCAFFOLD_MAP_SCAF_H
