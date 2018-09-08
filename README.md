@@ -32,6 +32,6 @@ make
 ./build/scaffold-test_bin camel_b.obj
 ```
 
-## License
-[MPL2](http://www.mozilla.org/MPL/2.0/) licensed
-([FAQ](http://www.mozilla.org/MPL/2.0/FAQ.html))
+## libigl version
+For libiglers, I wrote a simple function here (only 2d version),
+https://github.com/jiangzhongshi/libigl/tree/pr-scaf
