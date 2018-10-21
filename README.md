@@ -33,5 +33,5 @@ make
 ```
 
 ## libigl version
-For libiglers, I wrote a simple function here (only 2d version),
-https://github.com/jiangzhongshi/libigl/tree/pr-scaf
+The 2D version is integrated into libigl
+https://github.com/libigl/libigl/tree/master/tutorial/710_SCAF
