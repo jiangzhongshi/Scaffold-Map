@@ -91,7 +91,7 @@ bool DeformGUI::render_to_png(const int width, const int height,
     v_.data(),false,R,G,B,A);
 
   // Save it to a PNG
-  igl::png::writePNG(R,G,B,A,png_file);
+  // igl::png::writePNG(R,G,B,A,png_file);
   v_.core.viewport = viewport_ori;
 
   return true;

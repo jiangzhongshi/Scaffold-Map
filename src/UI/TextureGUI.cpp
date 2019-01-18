@@ -7,8 +7,8 @@
 #include "../StateManager.h"
 
 #include <vector>
-#include <nanogui/formhelper.h>
-#include <nanogui/slider.h>
+// #include <nanogui/formhelper.h>
+// #include <nanogui/slider.h>
 
 #include <igl/unproject_onto_mesh.h>
 #include <igl/unproject.h>
@@ -72,34 +72,7 @@ bool TextureGUI::launch() {
 
 bool TextureGUI::render_to_png(const int width, const int height,
 const std::string png_file) {
-    const int comp = 4;                                             // 4 Channels Red, Green, Blue, Alpha
-    const int stride = width*comp;  // Length of one row in bytes
-    unsigned char * data_fv = new unsigned char[comp * width * height];
-
-    // Hack -- override viewport and redraw
-    Eigen::Vector4f viewport_ori = v_.core.viewport;
-    v_.core.viewport << 0, 0, width, height;
-
-    glClearColor(0.0f,0.0f,0.0f,0.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    v_.core.draw(v_.data,v_.opengl,false);
-
-    // get the data
-    glReadPixels(0,0,width,height,GL_RGBA,GL_UNSIGNED_BYTE,data_fv);
-
-    v_.core.viewport = viewport_ori;
-
-    // flip vertically
-    std::vector<unsigned char> pixels(comp * width * height,0);     // The image itself;
-    for (unsigned j = 0; j<height;++j){
-      int j_fl = (height-1-j);
-      for (unsigned i = 0; i< stride; ++i){
-        pixels[j*stride + i] = data_fv[j_fl * stride + i];
-      }
-    }
-    bool ret = igl::stbi_write_png(png_file.c_str(), width, height, comp, pixels.data(), stride*sizeof(unsigned char));
-    delete [] data_fv;
-    return ret;
+  return false;
 }
 
 typedef struct {
@@ -255,7 +228,7 @@ void TextureGUI::scaffold_coloring() {
     vert0.head(d_.dim) = d_.w_uv.row(x.first);
     v_.data().add_points(vert0, Eigen::RowVector3d(1, 0, 0));
     v_.data().add_points(x.second, Eigen::RowVector3d(0, 0, 1));
-    v_.data().dirty |= v_.data().DIRTY_OVERLAY_POINTS;
+    v_.data().dirty |= igl::opengl::MeshGL::DIRTY_OVERLAY_POINTS;
 //    v_.data().dirty |= v_.data().DIRTY_OVERLAY_LINES;
   }
 
@@ -285,16 +258,16 @@ bool TextureGUI::pre_draw() {
       viewer_core_2d_ = v_.core;
       viewer_cores_init = true;
 
-      viewer_core_3d_.show_texture = true;
-      viewer_core_3d_.show_lines = false;
+      // viewer_core_3d_.show_texture = true;
+      // viewer_core_3d_.show_lines = false;
       viewer_core_3d_.lighting_factor = 1.f;
-      viewer_core_3d_.show_overlay_depth = true;
+      // viewer_core_3d_.show_overlay_depth = true;
       viewer_core_3d_.is_animating = true;
       viewer_core_3d_.align_camera_center(d_.m_V, d_.m_T);
 
-      viewer_core_2d_.show_texture = false;
-      viewer_core_2d_.show_lines = true;
-      viewer_core_2d_.show_overlay_depth = false;
+      // viewer_core_2d_.show_texture = false;
+      // viewer_core_2d_.show_lines = true;
+      // viewer_core_2d_.show_overlay_depth = false;
       viewer_core_2d_.is_animating = true;
       viewer_core_2d_.lighting_factor = 0;
       viewer_core_2d_.align_camera_center(d_.w_uv, d_.surface_F);
@@ -322,7 +295,7 @@ bool TextureGUI::pre_draw() {
 
       re_draw_ = false;
     }
-    v_.ngui->refresh();
+    // v_.ngui->refresh();
   }
   return false;
 }
@@ -356,7 +329,8 @@ bool TextureGUI::key_pressed(unsigned int key) {
       double change_factor =  sc/ reference_scaling_;
       s_.ws_solver->enlarge_internal_reference(change_factor);
       reference_scaling_= sc;
-      v_.ngui->refresh();}
+      // v_.ngui->refresh();
+      }
       return true;
     case '-':
     case '_':
@@ -371,7 +345,8 @@ bool TextureGUI::key_pressed(unsigned int key) {
       double change_factor =  sc/ reference_scaling_;
       s_.ws_solver->enlarge_internal_reference(change_factor);
       reference_scaling_= sc;
-      v_.ngui->refresh();}
+      // v_.ngui->refresh();
+      }
       return true;
     case 'd':
     case 'D': // drag
@@ -385,7 +360,7 @@ bool TextureGUI::key_pressed(unsigned int key) {
           t.join();
       threads_.clear();
       mouse_click_mode = ClickMode::CHOOSE_PATCH;
-      v_.ngui->refresh();
+      // v_.ngui->refresh();
       return true;
     case 'c':
     case 'C':
@@ -400,7 +375,7 @@ bool TextureGUI::key_pressed(unsigned int key) {
       scaffold_coloring();
       continue_computing_ = true;
       threads_.emplace_back(&TextureGUI::background_computation, this);
-      v_.ngui->refresh();
+      // v_.ngui->refresh();
       return true;
     default: break;
   }

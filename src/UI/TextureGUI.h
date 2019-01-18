@@ -13,7 +13,7 @@
 
 #define ENABLE_SERIALIZATION
 #include <igl/opengl/glfw/Viewer.h>
-#include <igl/viewer/ViewerCore.h>
+#include <igl/opengl/ViewerCore.h>
 
 class StateManager;
 class ScafData;
@@ -48,8 +48,8 @@ class TextureGUI {
   std::vector<Eigen::RowVector3d> componet_colors_;
   Eigen::Matrix<unsigned char, -1,-1> texture_R,texture_G, texture_B, texture_A;
   bool uv_space = true;
-  igl::opengl::glfw::ViewerCore viewer_core_3d_;
-  igl::opengl::glfw::ViewerCore viewer_core_2d_;
+  igl::opengl::ViewerCore viewer_core_3d_;
+  igl::opengl::ViewerCore viewer_core_2d_;
   bool viewer_cores_init = false;
   double uv_scale = 1.;
   void scaffold_coloring();

@@ -5,7 +5,7 @@
 #include "../ReWeightedARAP.h"
 #include "../StateManager.h"
 #include "../util/triangle_utils.h"
-#include <nanogui/formhelper.h>
+// #include <nanogui/formhelper.h>
 #include <igl/slim.h>
 #include <igl/file_dialog_save.h>
 #include <igl/file_dialog_open.h>

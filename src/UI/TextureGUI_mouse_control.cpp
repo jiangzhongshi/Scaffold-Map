@@ -7,8 +7,6 @@
 #include "../StateManager.h"
 
 #include <vector>
-#include <nanogui/formhelper.h>
-#include <nanogui/slider.h>
 
 #include <igl/unproject_onto_mesh.h>
 #include <igl/unproject.h>
@@ -36,7 +34,7 @@ bool TextureGUI::mouse_down(int button) {
       Eigen::Vector3f coord =
           igl::project(
               Eigen::Vector3f(d_.w_uv(0, 0), d_.w_uv(0, 1), 0),
-              (v_.core.view * v_.core.model).eval(),
+              (v_.core.view ).eval(),
               v_.core.proj,
               v_.core.viewport);
 
@@ -44,7 +42,7 @@ bool TextureGUI::mouse_down(int button) {
           Eigen::Vector3f(v_.down_mouse_x,
                           v_.core.viewport[3] - v_.down_mouse_y,
                           coord[2]),
-          (v_.core.view * v_.core.model).eval(),
+          (v_.core.view ).eval(),
           v_.core.proj, v_.core.viewport).cast<double>();
 
       mouse_click_mode = ClickMode::NONE;
@@ -120,7 +118,7 @@ bool TextureGUI::mouse_down(int button) {
       float x = v_.current_mouse_x;
       float y = v_.core.viewport(3) - v_.current_mouse_y;
       if (igl::unproject_onto_mesh(Eigen::Vector2f(x, y),
-                                   v_.core.view * v_.core.model,
+                                   v_.core.view ,
                                    v_.core.proj, v_.core.viewport,
                                    m_uv3,d_.m_T,
                                    picked_face,
@@ -159,7 +157,7 @@ bool TextureGUI::mouse_down(int button) {
       auto& picked_face = d_.m_T;
       m_uv3.leftCols(d_.w_uv.cols()) = d_.w_uv.topRows(d_.mv_num);
       if (igl::unproject_onto_mesh(Eigen::Vector2f(x, y),
-                                   v_.core.view * v_.core.model,
+                                   v_.core.view ,
                                    v_.core.proj, v_.core.viewport,
                                    m_uv3, picked_face,
                                    fid, bc)) {
@@ -180,7 +178,7 @@ bool TextureGUI::mouse_down(int button) {
         Eigen::Vector3f coord =
             igl::project(
                 Vector3f(m_uv3.row(vid).cast<float>()),
-                (v_.core.view * v_.core.model).eval(),
+                (v_.core.view ).eval(),
                 v_.core.proj,
                 v_.core.viewport);
         down_z_ = coord[2];
@@ -203,13 +201,13 @@ bool TextureGUI::mouse_up(int button) {
 
   Eigen::RowVector3f pos1 = igl::unproject(
       Eigen::Vector3f(m_x, v_.core.viewport[3] - m_y, down_z_),
-      (v_.core.view * v_.core.model).eval(),
+      (v_.core.view ).eval(),
       v_.core.proj, v_.core.viewport);
   Eigen::RowVector3f pos0 = igl::unproject(
       Eigen::Vector3f(v_.down_mouse_x,
                       v_.core.viewport[3] - v_.down_mouse_y,
                       down_z_),
-      (v_.core.view * v_.core.model).eval(),
+      (v_.core.view ).eval(),
       v_.core.proj, v_.core.viewport);
 
   Eigen::RowVector3d diff = Eigen::RowVector3d((pos1 - pos0).cast<double>());
@@ -223,12 +221,12 @@ bool TextureGUI::mouse_up(int button) {
 
   v_.data().add_points(vert0, Eigen::RowVector3d(1, 0, 0));
   v_.data().add_points(vert1, Eigen::RowVector3d(0, 0, 1));
-  v_.data
+  v_.data()
     .add_edges(vert0,
                vert1,
                Eigen::RowVector3d(0, 0, 1));
 
-  v_.data().dirty |= v_.data().DIRTY_OVERLAY_LINES;
+  v_.data().dirty |= igl::opengl::MeshGL::DIRTY_OVERLAY_POINTS;
   d_.add_soft_constraints(picked_vert_, vert1.head(dim));
 
   dragging_ = false;
