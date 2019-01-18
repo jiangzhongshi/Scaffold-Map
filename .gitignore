@@ -4,12 +4,8 @@
 .idea/
 CMakeFiles/
 bin/
-build-NOGUI/
-build-release/
-build/
 cmake-build-debug/
 cmake-build-release/
-cmake/
 models/
 rotate-test/
 src/autodiff.h
@@ -19,3 +15,4 @@ test/
 
 \.vscode/
 build*/
+external/

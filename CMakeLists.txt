@@ -1,32 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(scaffold-map)
 
-
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-set(LIBIGL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libigl/include)
-set(LIBIGL_INCLUDE_DIRS ${LIBIGL_INCLUDE_DIR})
-
-# Compilation flags: adapt to your needs
-if(MSVC)
-  # Enable parallel compilation
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP /bigobj") 
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR} )
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR} )
-else()
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-  endif()
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "." )
-endif()
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
 
 option(LIBIGL_USE_STATIC_LIBRARY    "Use libigl as static library" OFF)
 option(LIBIGL_WITH_ANTTWEAKBAR      "Use AntTweakBar"    OFF)
@@ -52,12 +27,20 @@ option(NOGUI        "Just for Profiling"           OFF)
 if(NOGUI)
   list(APPEND LIBIGL_DEFINITIONS "-DNOGUI")
 endif()
-# Adding libigl: choose the path to your local copy libigl
-# This is going to compile everything you requested 
-message(STATUS "${CMAKE_SOURCE_DIR}/libigl/shared/cmake")
-#set(LIBIGL_INCLUDE_DIR "${}")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/libigl/shared/cmake")
-include(libigl)
+
+include(DownloadProject)
+download_project(
+  PROJ         libigl
+  SOURCE_DIR   ${CMAKE_SOURCE_DIR}/external/libigl
+  DOWNLOAD_DIR ${CMAKE_SOURCE_DIR}/external/.cache/libigl
+  QUIET
+  GIT_REPOSITORY git@github.com:jiangzhongshi/libigl.git
+  GIT_TAG 4938a3bd796b35f44a642c00d8ab75d3995d9179
+)
+
+find_package(LIBIGL REQUIRED QUIET)
+
+
 # Add your project files
 
 FILE(GLOB SRCFILES
