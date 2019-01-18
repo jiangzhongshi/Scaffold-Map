@@ -36,7 +36,7 @@
 TextureGUI::TextureGUI(StateManager &state):
 s_(state), d_(state.scaf_data) {
   using namespace Eigen;
-  using igl_viewer = igl::viewer::Viewer;
+  using igl_viewer = igl::opengl::glfw::Viewer;
 
   igl::png::readPNG("../texture_bb.png",texture_R,
                     texture_G, texture_B, texture_A);
@@ -253,13 +253,13 @@ void TextureGUI::scaffold_coloring() {
   for (auto const &x: d_.soft_cons) {
     Eigen::RowVector3d vert0(0, 0, 0);
     vert0.head(d_.dim) = d_.w_uv.row(x.first);
-    v_.data.add_points(vert0, Eigen::RowVector3d(1, 0, 0));
-    v_.data.add_points(x.second, Eigen::RowVector3d(0, 0, 1));
-    v_.data.dirty |= v_.data.DIRTY_OVERLAY_POINTS;
-//    v_.data.dirty |= v_.data.DIRTY_OVERLAY_LINES;
+    v_.data().add_points(vert0, Eigen::RowVector3d(1, 0, 0));
+    v_.data().add_points(x.second, Eigen::RowVector3d(0, 0, 1));
+    v_.data().dirty |= v_.data().DIRTY_OVERLAY_POINTS;
+//    v_.data().dirty |= v_.data().DIRTY_OVERLAY_LINES;
   }
 
-  v_.data.set_colors(mesh_color_);
+  v_.data().set_colors(mesh_color_);
 }
 
 bool TextureGUI::post_draw() {
@@ -302,21 +302,21 @@ bool TextureGUI::pre_draw() {
       v_.core = uv_space ? viewer_core_2d_ : viewer_core_3d_;
     }
 
-    v_.data.clear();
+    v_.data().clear();
     {
       std::lock_guard<std::mutex> lock(mutex_);
 
       if (uv_space) {
-        v_.data.set_mesh(d_.w_uv, d_.surface_F);
+        v_.data().set_mesh(d_.w_uv, d_.surface_F);
         scaffold_coloring();
       } else {
-        v_.data.set_mesh(d_.m_V, d_.m_T);
-        v_.data.set_colors(Eigen::RowVector3d::Constant(1));
-        v_.data.set_uv(uv_scale * d_.w_uv.topRows(d_.mv_num));
-        v_.data.texture_R = texture_R;
-        v_.data.texture_G = texture_G;
-        v_.data.texture_B = texture_B;
-        v_.data.texture_A = texture_A;
+        v_.data().set_mesh(d_.m_V, d_.m_T);
+        v_.data().set_colors(Eigen::RowVector3d::Constant(1));
+        v_.data().set_uv(uv_scale * d_.w_uv.topRows(d_.mv_num));
+        v_.data().texture_R = texture_R;
+        v_.data().texture_G = texture_G;
+        v_.data().texture_B = texture_B;
+        v_.data().texture_A = texture_A;
       }
       show_uv_seam(uv_space);
 
@@ -569,7 +569,7 @@ void TextureGUI::show_uv_seam(bool uv_space) {
     E1.resizeLike(E0);
     E1.bottomRows(n_e - 1) = E0.topRows(n_e - 1);
     E1.row(0) = E0.row(n_e - 1);
-    v_.data.add_edges(E0, E1, Eigen::RowVector3d(1, 0, 0));
+    v_.data().add_edges(E0, E1, Eigen::RowVector3d(1, 0, 0));
   }
-  v_.data.dirty |= igl::viewer::ViewerData::DIRTY_OVERLAY_LINES;
+  v_.data().dirty |= igl::opengl::MeshGL::DIRTY_OVERLAY_LINES;
 };

@@ -12,7 +12,7 @@
 #include <condition_variable>
 
 #define ENABLE_SERIALIZATION
-#include <igl/viewer/Viewer.h>
+#include <igl/opengl/glfw/Viewer.h>
 #include <igl/viewer/ViewerCore.h>
 
 class StateManager;
@@ -40,7 +40,7 @@ class TextureGUI {
   // members
   ScafData &d_;
   StateManager &s_;
-  igl::viewer::Viewer v_;
+  igl::opengl::glfw::Viewer v_;
   double reference_scaling_ = 1;
 
   // coloring and display.
@@ -48,8 +48,8 @@ class TextureGUI {
   std::vector<Eigen::RowVector3d> componet_colors_;
   Eigen::Matrix<unsigned char, -1,-1> texture_R,texture_G, texture_B, texture_A;
   bool uv_space = true;
-  igl::viewer::ViewerCore viewer_core_3d_;
-  igl::viewer::ViewerCore viewer_core_2d_;
+  igl::opengl::glfw::ViewerCore viewer_core_3d_;
+  igl::opengl::glfw::ViewerCore viewer_core_2d_;
   bool viewer_cores_init = false;
   double uv_scale = 1.;
   void scaffold_coloring();

@@ -3,7 +3,7 @@
 
 #include "igl/igl_inline.h"
 #ifdef HAS_GUI
-#include <igl/viewer/Viewer.h>
+#include <igl/opengl/glfw/Viewer.h>
 #endif
 
 #include <igl/arap.h>

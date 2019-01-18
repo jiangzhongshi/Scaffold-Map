@@ -221,14 +221,14 @@ bool TextureGUI::mouse_up(int button) {
   vert0.head(dim) = d_.w_uv.row(picked_vert_);
   Eigen::RowVector3d vert1 = vert0 + diff;
 
-  v_.data.add_points(vert0, Eigen::RowVector3d(1, 0, 0));
-  v_.data.add_points(vert1, Eigen::RowVector3d(0, 0, 1));
+  v_.data().add_points(vert0, Eigen::RowVector3d(1, 0, 0));
+  v_.data().add_points(vert1, Eigen::RowVector3d(0, 0, 1));
   v_.data
     .add_edges(vert0,
                vert1,
                Eigen::RowVector3d(0, 0, 1));
 
-  v_.data.dirty |= v_.data.DIRTY_OVERLAY_LINES;
+  v_.data().dirty |= v_.data().DIRTY_OVERLAY_LINES;
   d_.add_soft_constraints(picked_vert_, vert1.head(dim));
 
   dragging_ = false;

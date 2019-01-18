@@ -10,16 +10,16 @@
 
 namespace igl {
 class SLIMData;
-namespace viewer {
+namespace opengl {namespace glfw{
 class Viewer;
-}
+}}
 }
 class StateManager;
 class ScafData;
 
 class DeformGUI {
  public:
-  DeformGUI(igl::viewer::Viewer &,StateManager &);
+  DeformGUI(igl::opengl::glfw::Viewer &,StateManager &);
 
   bool key_press(unsigned int key, int mod);
 
@@ -42,7 +42,7 @@ class DeformGUI {
 
   // members
   ScafData& d_;
-  igl::viewer::Viewer& v_;
+  igl::opengl::glfw::Viewer& v_;
   StateManager &s_;
 
   // coloring and overlay.

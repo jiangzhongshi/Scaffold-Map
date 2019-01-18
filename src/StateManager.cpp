@@ -22,7 +22,6 @@
 #include <igl/map_vertices_to_circle.h>
 #include <igl/harmonic.h>
 #include <igl/flipped_triangles.h>
-#include <igl/components.h>
 #include <igl/euler_characteristic.h>
 #include <igl/is_edge_manifold.h>
 #include <igl/doublearea.h>

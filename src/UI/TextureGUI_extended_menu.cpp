@@ -66,8 +66,8 @@ bool TextureGUI::extended_menu() {
     ws_solver = s_.ws_solver;
 
     // refresh after load
-    v_.data.clear();
-    v_.data.set_mesh(d_.w_uv, d_.surface_F);
+    v_.data().clear();
+    v_.data().set_mesh(d_.w_uv, d_.surface_F);
     scaffold_coloring();
 
     v_.ngui->refresh();
@@ -90,11 +90,11 @@ bool TextureGUI::extended_menu() {
     Eigen::MatrixXi UVF;
     igl::read_triangle_mesh(igl::file_dialog_open(),UVV,UVF);
     if(!uv_space)
-      v_.data.set_uv(30*UVV,UVF);
+      v_.data().set_uv(30*UVV,UVF);
     else {
-      v_.data.clear();
-      v_.data.set_mesh(UVV, UVF);
-      v_.data.set_colors(RowVector3d(182. / 255., 215. / 255, 168 / 255.));
+      v_.data().clear();
+      v_.data().set_mesh(UVV, UVF);
+      v_.data().set_colors(RowVector3d(182. / 255., 215. / 255, 168 / 255.));
       
     }
 

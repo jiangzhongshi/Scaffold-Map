@@ -31,7 +31,7 @@
 #include <igl/slim.h>
 #include <igl/squared_edge_lengths.h>
 #include <igl/triangle/triangulate.h>
-#include <igl/viewer/Viewer.h>
+#include <igl/opengl/glfw/Viewer.h>
 #include <igl/write_triangle_mesh.h>
 #include <iostream>
 #include <memory>
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
     TextureGUI gui(s_);
     gui.launch();
   } else {
-    igl::viewer::Viewer v;
+    igl::opengl::glfw::Viewer v;
     DeformGUI gui(v, s_);
     v.launch();
   }

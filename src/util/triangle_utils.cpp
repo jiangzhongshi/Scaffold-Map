@@ -329,7 +329,7 @@ int count_flips(const Eigen::MatrixXd &V,
   return flip_idx.size();
 }
 
-void write_viewer_to_png(igl::viewer::Viewer &viewer, std::string file_path) {
+void write_viewer_to_png(igl::opengl::glfw::Viewer &viewer, std::string file_path) {
   Eigen::Matrix<unsigned char, Eigen::Dynamic, Eigen::Dynamic>
       R(1280 * 4, 800 * 4);
   auto G = R, B = R, A = R;

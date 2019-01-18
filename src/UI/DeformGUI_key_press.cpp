@@ -14,7 +14,7 @@
 #include <igl/unproject_onto_mesh.h>
 #include <igl/unproject.h>
 #include <igl/project.h>
-#include <igl/viewer/Viewer.h>
+#include <igl/opengl/glfw/Viewer.h>
 #include <igl/writeOBJ.h>
 #include <igl/doublearea.h>
 #include <igl/triangle_triangle_adjacency.h>
@@ -107,15 +107,15 @@ bool DeformGUI::key_press(unsigned int key, int mod) {
 
   switch (key) {
     case '0':
-    case ' ':v_.data.clear();
-      v_.data.set_mesh(sd.w_uv, sd.surface_F);
-      v_.data.set_face_based(true);
+    case ' ':v_.data().clear();
+      v_.data().set_mesh(sd.w_uv, sd.surface_F);
+      v_.data().set_face_based(true);
       break;
     default:return false;
   }
 
   scaffold_coloring();
-  if (v_.ngui)
-    v_.ngui->refresh();
+  // if (v_.ngui)
+    // v_.ngui->refresh();
   return true;
 }

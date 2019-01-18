@@ -4,7 +4,7 @@
 
 #include <igl/copyleft/tetgen/tetrahedralize.h>
 #include <Eigen/Core>
-#include <igl/viewer/Viewer.h>
+#include <igl/opengl/glfw/Viewer.h>
 #include <igl/triangle/triangulate.h>
 #include <igl/cat.h>
 #include <igl/writeOBJ.h>
