@@ -334,7 +334,7 @@ void write_viewer_to_png(igl::opengl::glfw::Viewer &viewer, std::string file_pat
       R(1280 * 4, 800 * 4);
   auto G = R, B = R, A = R;
 
-  viewer.core.draw_buffer(viewer.data, viewer.opengl, false, R, G, B, A);
+  viewer.core.draw_buffer(viewer.data(), false, R, G, B, A);
   igl::png::writePNG(R, G, B, A, file_path);
 }
 void triangle_improving_edge_flip(const Eigen::MatrixXd &V,
@@ -570,7 +570,7 @@ void triangle_improving_edge_flip(const Eigen::MatrixXd &V,
 //  });
 }
 
-#include <igl/triangle_tuple.h>
+#include "../igl_dev/triangle_tuple.h"
 #include <igl/readOBJ.h>
 void smooth_single_vertex(const int &f0,
                           const int &e0,

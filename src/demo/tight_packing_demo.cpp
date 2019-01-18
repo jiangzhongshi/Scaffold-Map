@@ -3,7 +3,7 @@
 //
 
 #include <igl/adjacency_matrix.h>
-#include <igl/facet_components.h>
+#include <igl/vertex_components.h>
 #include <iostream>
 #include <igl/remove_unreferenced.h>
 #include <igl/doublearea.h>
@@ -24,7 +24,7 @@ void tight_packing_init(std::string filename, ScafData& d_) {
   Eigen::MatrixXi V_conn_flag;
   MatrixXi component_vert_sizes;
   igl::adjacency_matrix(F,Adj);
-  igl::facet_components(Adj,V_conn_flag, component_vert_sizes);
+  igl::vertex_components(Adj,V_conn_flag, component_vert_sizes);
   std::cout<<"counts:"<<component_vert_sizes<<std::endl;
   int component_number = component_vert_sizes.size();
 

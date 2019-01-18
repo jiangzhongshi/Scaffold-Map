@@ -11,7 +11,6 @@
 #include <igl/boundary_loop.h>
 #include <igl/cat.h>
 #include <igl/colon.h>
-#include <igl/components.h>
 #include <igl/copyleft/tetgen/tetrahedralize.h>
 #include <igl/doublearea.h>
 #include <igl/euler_characteristic.h>
@@ -35,12 +34,9 @@
 #include <igl/write_triangle_mesh.h>
 #include <iostream>
 #include <memory>
-#include <nanogui/formhelper.h>
-#include <nanogui/screen.h>
 #define MODEL_PATH "../models/bumpy.off"
 #define CUBE_PATH "../models/cube_cc1.obj"
 
-#define IGLSCAF
 #ifndef IGLSCAF
 int main(int argc, char* argv[]) {
   using namespace Eigen;

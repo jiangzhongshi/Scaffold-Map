@@ -212,7 +212,7 @@ if(show_interior_boundary) {
 }
 }
 
-// bool DeformGUI::extended_menu() {
+bool DeformGUI::extended_menu() {return false;}
 //   using namespace Eigen;
 //   using namespace std;
 
