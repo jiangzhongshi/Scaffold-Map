@@ -38,7 +38,7 @@ download_project(
   SOURCE_DIR   ${CMAKE_SOURCE_DIR}/external/libigl
   DOWNLOAD_DIR ${CMAKE_SOURCE_DIR}/external/.cache/libigl
   QUIET
-  GIT_REPOSITORY git@github.com:jiangzhongshi/libigl.git
+  GIT_REPOSITORY https://github.com/jiangzhongshi/libigl.git
 )
 
 find_package(LIBIGL REQUIRED QUIET)
