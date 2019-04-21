@@ -12,6 +12,9 @@ namespace igl {
 class SLIMData;
 namespace opengl {namespace glfw{
 class Viewer;
+namespace imgui{
+class ImGuiMenu;
+}
 }}
 }
 class StateManager;

@@ -119,8 +119,6 @@ bool DeformGUI::mouse_up(int button, int mod) {
       v_.core.proj, v_.core.viewport);
 
   Eigen::RowVector3d diff = Eigen::RowVector3d((pos1 - pos0).cast<double>());
-//  std::cout << "pos0:" << pos0 << std::endl
-//            << "pos1:" << pos1 << std::endl;
 
   int dim = d_.dim;
   Eigen::RowVector3d vert0(0,0,0);
@@ -145,7 +143,8 @@ DeformGUI::DeformGUI(igl::opengl::glfw::Viewer &vi,
                      StateManager &state) :
     v_(vi),
     s_(state),
-    d_(state.scaf_data) {
+    d_(state.scaf_data){
+//    menu_ = std::make_shared<igl::opengl::glfw::imgui::ImGuiMenu>();
 
   using namespace Eigen;
   v_.callback_mouse_down = [this](igl::opengl::glfw::Viewer &, int a, int b) {
@@ -161,9 +160,10 @@ DeformGUI::DeformGUI(igl::opengl::glfw::Viewer &vi,
     return this->key_press(key, mod);
   };
 
-  v_.callback_init = [this](igl::opengl::glfw::Viewer &) {
-    return extended_menu();
-  };
+//  v_.callback_init = [this](igl::opengl::glfw::Viewer &) {
+//    return extended_menu();
+//  };
+  extended_menu();
 
   v_.data().set_mesh(d_.w_uv, d_.surface_F);
   scaffold_coloring();
@@ -216,118 +216,92 @@ if(show_interior_boundary) {
 }
 }
 
-igl::opengl::glfw::imgui::ImGuiMenu menu;
+igl::opengl::glfw::imgui::ImGuiMenu menu_;
 bool DeformGUI::extended_menu()
 {
-v_.plugins.push_back(&menu);
+	using namespace Eigen;
+	using namespace std;
+	v_.plugins.push_back(&menu_);
 
-//menu.callback_draw_viewer_menu = [&]() {
-//            menu.draw_viewer_menu();
-    // Add widgets to the sidebar.
-//    if (ImGui::CollapsingHeader("Reconstruction Options", ImGuiTreeNodeFlags_DefaultOpen))
-//    {
-//        ImGui::Text("resolution", ImGuiDataType_U32, &s_.iter_count);
-    // TODO: Add more parameters to tweak here...
-//    }
-//};
+	menu_.callback_draw_viewer_menu = [&]() {
+	    menu_.draw_viewer_menu();
+//     Add widgets to the sidebar.
+    if (ImGui::CollapsingHeader("Scaffold Info", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::Text("iteration count %d", s_.iter_count);
+        ImGui::Text("V %ld F %ld", d_.mv_num, d_.mf_num);
+        ImGui::Text("Scaf V %ld F %ld", d_.sv_num, d_.sf_num);
+    }
+    if (ImGui::CollapsingHeader("Serialization", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        if (ImGui::Button("Save")) s_.save(igl::file_dialog_save());
+        if (ImGui::Button("Load")) {
+            std::string ser_file = igl::file_dialog_open();
+            if(ser_file.empty()) return;
+            s_.load(ser_file);
+
+            VectorXi b(d_.soft_cons.size());
+            MatrixXd bc(b.rows(), 3);
+            int i = 0;
+            for (auto const &x: d_.soft_cons) {
+              b(i) = x.first;
+              bc.row(i) = x.second;
+              i++;
+            }
+
+            MatrixXd m_uv = d_.w_uv.topRows(d_.mv_num);
+
+            // refresh after load
+            v_.data().clear();
+            v_.data().set_mesh(d_.w_uv, d_.surface_F);
+            scaffold_coloring();
+        }
+        if (ImGui::Button("SaveMesh")) {
+           if(d_.dim == 3) {
+             Eigen::MatrixXi F;
+             igl::boundary_facets(d_.s_T, F);
+             igl::writeMESH(igl::file_dialog_save(), d_.w_uv, d_.s_T, F);
+           } else {
+             Eigen::MatrixXd w_uv3 = Eigen::MatrixXd::Zero(d_.w_uv.rows(),3);
+             w_uv3.leftCols(2) = d_.w_uv;
+             igl::writeOBJ(igl::file_dialog_save(),w_uv3, d_.surface_F);
+           }
+        }
+
+		} // Serialization
+	};
+
+    menu_.callback_draw_custom_window = [&]()
+    {
+      // Define next window position + size
+      ImGui::SetNextWindowPos(ImVec2(1000.f * menu_.menu_scaling(), 10), ImGuiSetCond_FirstUseEver);
+      ImGui::SetNextWindowSize(ImVec2(200, 260), ImGuiSetCond_FirstUseEver);
+      ImGui::Begin(
+    "Scaffold Tweak", nullptr,
+    ImGuiWindowFlags_NoSavedSettings
+      );
+
+
+    if (ImGui::Checkbox("Remesh", &s_.optimize_scaffold));
+    if (ImGui::InputInt("It Per []", &inner_iters));
+    if (ImGui::Checkbox("Use Newton", &use_newton));
+    if (ImGui::Checkbox("Auto Weight", &auto_weight));
+    float val = d_.scaffold_factor;
+    if (ImGui::InputFloat("Scaf Weight",&val)) {
+        s_.ws_solver->adjust_scaf_weight(val);
+         std::cout << "Weight:" << val << std::endl;
+    }
+    if (ImGui::Button("Clear Constraints")) {
+      d_.soft_cons.clear();
+      scaffold_coloring();
+    }
+    if (ImGui::Button("SnapShot")) {
+     render_to_png(2*1600, 2*900,
+                   igl::file_dialog_save
+                       ());
+    }
+
+		ImGui::End();
+	};
+
 }
-//   using namespace Eigen;
-//   using namespace std;
-
-//   auto& ws_solver = s_.ws_solver;
-//   bool &reg_scaf = s_.optimize_scaffold;
-//   int &iteration_count = s_.iter_count;
-
-//   v_.ngui->addGroup("Scaffold Info");
-
-//   v_.ngui->addVariable("It", iteration_count, false);
-
-//   v_.ngui->addGroup("Serialization");
-//   v_.ngui->addButton("Save", [&]() {
-//     s_.save(igl::file_dialog_save());
-//   });
-//   v_.ngui->addButton("Load", [&]() {
-//     std::string ser_file = igl::file_dialog_open();
-//     if(ser_file.empty()) return;
-//     s_.load(ser_file);
-
-//     VectorXi b(d_.soft_cons.size());
-//     MatrixXd bc(b.rows(), 3);
-//     int i = 0;
-//     for (auto const &x: d_.soft_cons) {
-//       b(i) = x.first;
-//       bc.row(i) = x.second;
-//       i++;
-//     }
-
-//     MatrixXd m_uv = d_.w_uv.topRows(d_.mv_num);
-
-//     ws_solver = s_.ws_solver;
-
-//     // refresh after load
-//     v_.data().clear();
-//     v_.data().set_mesh(d_.w_uv, d_.surface_F);
-//     scaffold_coloring();
-
-//     v_.ngui->refresh();
-//   });
-
-//   v_.ngui->addButton("SaveMesh", [&]() {
-//     if(d_.dim == 3) {
-//       Eigen::MatrixXi F;
-//       igl::boundary_facets(d_.s_T, F);
-//       igl::writeMESH(igl::file_dialog_save(), d_.w_uv, d_.s_T, F);
-//     } else {
-//       Eigen::MatrixXd w_uv3 = Eigen::MatrixXd::Zero(d_.w_uv.rows(),3);
-//       w_uv3.leftCols(2) = d_.w_uv;
-//       igl::writeOBJ(igl::file_dialog_save(),w_uv3, d_.surface_F);
-//     }
-//   });
-
-//   // Add an additional menu window
-//   v_.ngui->addWindow(Eigen::Vector2i(1280 - 220, 10), "Scaffold Tweak");
-//   v_.ngui->addVariable<bool>("ReMesh", [&reg_scaf](bool val) {
-//     reg_scaf = val; // set
-//   }, [&reg_scaf]() {
-//     return reg_scaf; // get
-//   });
-//   v_.ngui->addVariable("AutoWeight", auto_weight);
-//   v_.ngui->addVariable<float>("Scaf Weight",
-//                                     [&ws_solver](float val) {
-//                                       ws_solver->adjust_scaf_weight(val);
-//                                       std::cout << "Weight:" << val
-//                                                 << std::endl;
-//                                     },
-//                                     [this]() {
-//                                       return d_.scaffold_factor;
-//                                     });
-
-//   // Expose the same variable directly ...
-//   // m_viewer.ngui->addVariable("float",floatVariable);
-
-// //    if(m_state.solver_type == StateManager::SolverType::LBFGS)
-// //      m_viewer.ngui->addVariable("BFGS per it",inner_iters );
-// //    else if(m_state.solver_type == StateManager::SolverType::ReweightedARAP)
-//   v_.ngui->addVariable("It Per [ ]", inner_iters);
-//   v_.ngui->addVariable("Use Newton", use_newton);
-
-//   v_.ngui->addButton("Clear Constraints", [&]() {
-//     d_.soft_cons.clear();
-//     scaffold_coloring();
-
-//     v_.ngui->refresh();
-//   });
-
-
-//   v_.ngui->addButton("Snapshot", [&]() {
-//     render_to_png(2*1600, 2*900,
-//                   igl::file_dialog_save
-//                       ());
-//   });
-
-//   // Generate menu
-//   v_.screen->performLayout();
-
-//   return false;
-// };
-

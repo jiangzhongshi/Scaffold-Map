@@ -87,9 +87,6 @@ inline void soft_cat(
 };
 
 
-void scaffold_generator(const Eigen::MatrixXd &V0, const Eigen::MatrixXi &F0,
-                        double max_area_cons, Eigen::MatrixXd &uv,
-                        Eigen::MatrixXi &F_out);
 
 void
 scaffold_interpolation(const Eigen::MatrixXd &w_V, const Eigen::MatrixXi &w_F,
