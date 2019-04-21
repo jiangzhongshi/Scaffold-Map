@@ -40,6 +40,14 @@ download_project(
   QUIET
   GIT_REPOSITORY git@github.com:jiangzhongshi/libigl.git
 )
+download_project(
+  PROJ cli11
+  SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/cli11
+  DOWNLOAD_DIR ${CMAKE_SOURCE_DIR}/external/.cache/cli11
+  URL     https://github.com/CLIUtils/CLI11/archive/v1.6.1.tar.gz
+  URL_MD5 48ef97262adb0b47a2f0a7edbda6e2aa
+)
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/cli11)
 
 find_package(LIBIGL REQUIRED QUIET)
 
@@ -52,6 +60,8 @@ src/ScafData.cpp
 src/StateManager.cpp
 )
 
+target_link_libraries(scaffold_map PUBLIC igl::triangle igl::core igl::tetgen igl::opengl_glfw igl::png)
+
 
 FILE(GLOB SRCFILES
     "src/UI/*.cpp"
@@ -62,7 +72,7 @@ FILE(GLOB SRCFILES
 add_library(scaf_utils ${SRCFILES})
 
 add_executable(${PROJECT_NAME}_bin src/main.cpp)
-target_link_libraries(scaffold_map PUBLIC igl::triangle igl::core igl::tetgen igl::opengl_glfw igl::png)
 target_link_libraries(scaf_utils PUBLIC igl::png igl::triangle igl::tetgen igl::opengl_glfw igl::opengl_glfw_imgui)
-target_link_libraries(${PROJECT_NAME}_bin igl::png scaffold_map scaf_utils)
+target_link_libraries(${PROJECT_NAME}_bin
+  igl::png scaffold_map scaf_utils CLI11::CLI11)
 

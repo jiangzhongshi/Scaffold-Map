@@ -7,14 +7,24 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include <iostream>
 #include <memory>
+#include <CLI/CLI.hpp>
+
 
 int main(int argc, char* argv[]) {
-  using namespace Eigen;
-  using namespace std;
-  std::string filename = argv[1];
-  StateManager s_(filename);
+  CLI::App command_line{"Scaffold Mapping"};
+  std::string filename = "";
+  int demo_type = 1;
+  command_line.add_option("-m,--mesh", filename, "Mesh path")->check(CLI::ExistingFile);
+  command_line.add_option("-t,--type", demo_type, "demo type");
+  try {
+      command_line.parse(argc, argv);
+  } catch (const CLI::ParseError &e) {
+      return command_line.exit(e);
+  }
+
+  StateManager s_(filename, static_cast<DemoType>(demo_type));
 #ifndef NOGUI
-  bool complex_ui = (argc >= 3);
+  bool complex_ui = false;
   if(complex_ui) {
     TextureGUI gui(s_);
     gui.launch();
@@ -25,6 +35,8 @@ int main(int argc, char* argv[]) {
     v.launch();
   }
 #else
+  using namespace Eigen;
+  using namespace std;
   auto &d_ = s_.scaf_data;
   auto &ws = s_.ws_solver;
   double last_mesh_energy =  ws->compute_energy(d_.w_uv, false) / d_.mesh_measure;

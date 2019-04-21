@@ -71,7 +71,7 @@ void parameterization_init( std::string filename, Eigen::MatrixXd& V_ref,
 //void bars_stack_construction(ScafData& d_);
 
 void tight_packing_init(std::string, ScafData&);
-StateManager::StateManager(std::string filename):
+StateManager::StateManager(std::string filename, DemoType demo_type):
 model_file(filename),
 iter_count(0) {
   using namespace Eigen;
@@ -81,22 +81,13 @@ iter_count(0) {
 
   Eigen::VectorXi frame;
   Eigen::MatrixXi surf;
-  enum class DemoType{
-    PACKING, FLOW, PARAM, BARS
-  };
-  auto demo_type = DemoType::PACKING;
 
   switch (demo_type) {
     case DemoType::PACKING :tight_packing_init(filename, scaf_data);
       break;
     case DemoType::PARAM :read_mesh_with_uv_seam(filename, V0, T0);
-//  parameterization_init(filename, V0,T0, V1, T1, frame, surf);
       this->scaf_data.add_new_patch(V0, T0, RowVector2d(0, 0));
-//  this->scaf_data = ScafData(V0,T0,V1,T1);
-//  this->scaf_data.frame_ids = frame;
-//  this->scaf_data.surface_F = surf;
       break;
-
     case DemoType::BARS:
         assert(false);
 //      bars_stack_construction(scaf_data);

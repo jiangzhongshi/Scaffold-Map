@@ -65,7 +65,6 @@ bool DeformGUI::key_press(unsigned int key, int mod) {
       ws_solver->adjust_scaf_weight(
           (last_mesh_energy)*sd.mesh_measure /(sd.sf_num) / 100.0);
       if(!use_newton) {
-
         sd.energy = ws_solver->perform_iteration(sd.w_uv);
       }
       else {
@@ -115,7 +114,5 @@ bool DeformGUI::key_press(unsigned int key, int mod) {
   }
 
   scaffold_coloring();
-  // if (v_.ngui)
-    // v_.ngui->refresh();
   return true;
 }

@@ -11,11 +11,14 @@
 #include <memory>
 #include <iostream>
 
+enum DemoType{
+PACKING, FLOW, PARAM, BARS
+};
 
 struct StateManager
 {
   StateManager(){} //empty constructor
-  StateManager(std::string filename); //new from mesh_file
+  StateManager(std::string filename, DemoType demo_type); //new from mesh_file
 
   friend std::ostream& operator<<(std::ostream& os, const StateManager& sm);
 

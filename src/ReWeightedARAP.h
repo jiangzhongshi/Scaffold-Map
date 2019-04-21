@@ -23,8 +23,6 @@ public:
 
   void pre_calc() ;
 
-  [[deprecated]] void regenerate_scaffold() ;
-
   void adjust_scaf_weight(double) ;
 
   void solve_weighted_proxy(Eigen::MatrixXd &uv_new);
@@ -66,9 +64,6 @@ private: // utilities
                             Eigen::VectorXd &rhs) const;
   double compute_soft_constraint_energy(const Eigen::MatrixXd &uv) const ;
 
-  [[deprecated]] void update_weights_and_closest_rotations(Eigen::MatrixXd
-                                                           &uv){};
-
   template <int dim>
   void update_weights_and_closest_rotations(
       const Eigen::MatrixXd& Ji,
@@ -89,9 +84,6 @@ private: // utilities
   void build_scaffold_linear_system(Eigen::SparseMatrix<double> &L,
                                    Eigen::VectorXd &rhs) const;
 
-  [[deprecated]] void buildAm(const Eigen::VectorXd &sqrt_M,
-                 Eigen::SparseMatrix<double> &Am) const{};
-
   static void buildAm(const Eigen::VectorXd &sqrt_M,
               const Eigen::SparseMatrix<double> &Dx,
               const Eigen::SparseMatrix<double> &Dy,
@@ -105,11 +97,7 @@ private: // utilities
                const Eigen::MatrixXd &W,
                Eigen::SparseMatrix<double> &Am) ;
 
-  [[deprecated]] void buildRhs(const Eigen::VectorXd &sqrt_M,
-             const Eigen::SparseMatrix<double> &At,
-             Eigen::VectorXd &frhs) const;
 
-  // static computing f_rhs = \sqrt(M) b = \sqrt(M)*W*R
   static void buildRhs(const Eigen::VectorXd &sqrt_M,
                       const Eigen::MatrixXd &W,
                       const Eigen::MatrixXd& Ri,

@@ -6,12 +6,9 @@
 #include "../ReWeightedARAP.h"
 #include "../StateManager.h"
 #include "../util/triangle_utils.h"
-// #include <nanogui/formhelper.h>
 #include <igl/slim.h>
 #include <igl/file_dialog_save.h>
 #include <igl/file_dialog_open.h>
-#include <igl/boundary_loop.h>
-#include <igl/colon.h>
 #include <igl/unproject_onto_mesh.h>
 #include <igl/unproject.h>
 #include <igl/project.h>
@@ -19,7 +16,6 @@
 #include <igl/writeMESH.h>
 #include <igl/boundary_facets.h>
 #include <igl/writeOBJ.h>
-#include <igl_stb_image.h>
 #include <igl/png/readPNG.h>
 #include <igl/slice.h>
 
@@ -282,10 +278,11 @@ bool DeformGUI::extended_menu()
       );
 
 
-    if (ImGui::Checkbox("Remesh", &s_.optimize_scaffold));
-    if (ImGui::InputInt("It Per []", &inner_iters));
-    if (ImGui::Checkbox("Use Newton", &use_newton));
-    if (ImGui::Checkbox("Auto Weight", &auto_weight));
+    ImGui::Checkbox("Remesh", &s_.optimize_scaffold);
+    ImGui::InputInt("It Per []", &inner_iters);
+    ImGui::Checkbox("Use Newton", &use_newton);
+    ImGui::Checkbox("Auto Weight", &auto_weight);
+
     float val = d_.scaffold_factor;
     if (ImGui::InputFloat("Scaf Weight",&val)) {
         s_.ws_solver->adjust_scaf_weight(val);
