@@ -29,8 +29,9 @@ make
 ```
 ### Running
 ```bash
-./build/scaffold-test_bin camel_b.obj
+./scaffold-map_bin -t 0 -m ../camel_b.obj
 ```
+Press `[space]` to perform one iteration. You can also try to drag it around!
 
 ## libigl version
 A simplified 2D version is integrated into libigl
