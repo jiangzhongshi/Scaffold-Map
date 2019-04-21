@@ -23,6 +23,10 @@
 #include <igl/png/readPNG.h>
 #include <igl/slice.h>
 
+#include <igl/opengl/glfw/imgui/ImGuiMenu.h>
+#include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
+
+
 bool DeformGUI::mouse_down(int button, int mod) {
   if (button != 0) // only overwrite left button
     return false;
@@ -212,7 +216,21 @@ if(show_interior_boundary) {
 }
 }
 
-bool DeformGUI::extended_menu() {return false;}
+igl::opengl::glfw::imgui::ImGuiMenu menu;
+bool DeformGUI::extended_menu()
+{
+v_.plugins.push_back(&menu);
+
+//menu.callback_draw_viewer_menu = [&]() {
+//            menu.draw_viewer_menu();
+    // Add widgets to the sidebar.
+//    if (ImGui::CollapsingHeader("Reconstruction Options", ImGuiTreeNodeFlags_DefaultOpen))
+//    {
+//        ImGui::Text("resolution", ImGuiDataType_U32, &s_.iter_count);
+    // TODO: Add more parameters to tweak here...
+//    }
+//};
+}
 //   using namespace Eigen;
 //   using namespace std;
 

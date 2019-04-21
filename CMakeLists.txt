@@ -9,7 +9,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 
 option(LIBIGL_USE_STATIC_LIBRARY    "Use libigl as static library" OFF)
-option(LIBIGL_WITH_ANTTWEAKBAR      "Use AntTweakBar"    OFF)
 option(LIBIGL_WITH_CGAL             "Use CGAL"           OFF)
 option(LIBIGL_WITH_COMISO           "Use CoMiso"         OFF)
 option(LIBIGL_WITH_CORK             "Use Cork"           OFF)
@@ -17,9 +16,9 @@ option(LIBIGL_WITH_EMBREE           "Use Embree"         OFF)
 option(LIBIGL_WITH_LIM              "Use LIM"            OFF)
 option(LIBIGL_WITH_MATLAB           "Use Matlab"         OFF)
 option(LIBIGL_WITH_MOSEK            "Use MOSEK"          OFF)
-option(LIBIGL_WITH_NANOGUI          "Use Nanogui menu"   ON)
 option(LIBIGL_WITH_OPENGL           "Use OpenGL"         ON)
 option(LIBIGL_WITH_OPENGL_GLFW      "Use GLFW"           ON)
+option(LIBIGL_WITH_OPENGL_GLFW_IMGUI "Use menu"   ON)
 option(LIBIGL_WITH_PNG              "Use PNG"            ON)
 option(LIBIGL_WITH_TETGEN           "Use Tetgen"         ON)
 option(LIBIGL_WITH_TRIANGLE         "Use Triangle"       ON)
@@ -46,14 +45,24 @@ find_package(LIBIGL REQUIRED QUIET)
 
 
 # Add your project files
+add_library(scaffold_map
+src/ReWeightedARAP.cpp
+src/ReWeightedARAP_solve.cpp
+src/ScafData.cpp
+src/StateManager.cpp
+)
+
 
 FILE(GLOB SRCFILES
-    "src/*.cpp"
     "src/UI/*.cpp"
     "src/util/*.cpp"
     "src/demo/*.cpp"
     "src/Newton/*.cpp")
 
-add_executable(${PROJECT_NAME}_bin ${SRCFILES})
-target_link_libraries(${PROJECT_NAME}_bin igl::core igl::opengl igl::opengl_glfw igl::triangle igl::tetgen igl::png)
+add_library(scaf_utils ${SRCFILES})
+
+add_executable(${PROJECT_NAME}_bin src/main.cpp)
+target_link_libraries(scaffold_map PUBLIC igl::triangle igl::core igl::tetgen igl::opengl_glfw igl::png)
+target_link_libraries(scaf_utils PUBLIC igl::png igl::triangle igl::tetgen igl::opengl_glfw igl::opengl_glfw_imgui)
+target_link_libraries(${PROJECT_NAME}_bin igl::png scaffold_map scaf_utils)
 
