@@ -5,9 +5,6 @@ matrix:
     - os: linux
       compiler: gcc-6
       script:
-        - git submodule update --init --recursive
-        - mkdir libigl/external/nanogui/ext/glfw/include/GL
-        - wget --no-check-certificate -P libigl/external/nanogui/ext/glfw/include/GL http://www.opengl.org/registry/api/GL/glcorearb.h
         - mkdir build
         - cd build
         - cmake -DCMAKE_CXX_COMPILER=g++-6 -DCMAKE_C_COMPILER=gcc-6 ../
@@ -42,7 +39,6 @@ matrix:
         # - brew update
         # - brew upgrade cmake
         # - brew upgrade cgal
-        - git submodule update --init --recursive
         - mkdir build
         - cd build
         - cmake ../

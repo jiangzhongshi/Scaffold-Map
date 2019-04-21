@@ -14,7 +14,7 @@ Source code is hosted on this GitHub repository. The program is built and tested
 
 ### Downloading
 ```bash
-git clone --recursive https://github.com/jiangzhongshi/scaffold-map.git
+git clone https://github.com/jiangzhongshi/scaffold-map.git
 ```
 ### Building [![Build Status](https://travis-ci.org/jiangzhongshi/Scaffold-Map.svg?branch=master)](https://travis-ci.org/jiangzhongshi/Scaffold-Map)
 
@@ -33,5 +33,5 @@ make
 ```
 
 ## libigl version
-The 2D version is integrated into libigl
+A simplified 2D version is integrated into libigl
 https://github.com/libigl/libigl/tree/master/tutorial/710_SCAF
