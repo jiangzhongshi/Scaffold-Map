@@ -1,7 +1,7 @@
 #include "SchaeferNewtonParametrizer.h"
 
 #include "eigen_stl_utils.h"
-
+#include <Eigen/SparseCholesky>
 #include <igl/cotmatrix_entries.h>
 #include <igl/doublearea.h>
 #include <iostream>
@@ -91,7 +91,7 @@ void SchaeferNewtonParametrizer::newton_iteration(const Eigen::MatrixXi &F,
 	Eigen::VectorXd grad_unknown;
 	igl::slice(grad, unknown_ids, 1, grad_unknown);
 
-	Eigen::SparseLU<Eigen::SparseMatrix<double> > solver;
+	Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > solver;
 	solver.compute(hessian_unknown);
 	if(solver.info()!=Eigen::Success) {
 		cout << "Eigen Failure!" << endl;
@@ -201,12 +201,12 @@ double SchaeferNewtonParametrizer::compute_energy_gradient_hessian(const Eigen::
 		}
 
 		Eigen::MatrixXd local_hessian = temp.getHessian();
-              Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 6, 6>> es(local_hessian);
-              Eigen::MatrixXd D = es.eigenvalues();
-              Eigen::MatrixXd U = es.eigenvectors();
-              for (int i = 0; i < 6; i++)
-                      D(i) = (D(i) < 0) ? 0 : D(i);
-              local_hessian = U * D.asDiagonal()* U.inverse();
+//              Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 6, 6>> es(local_hessian);
+//              Eigen::MatrixXd D = es.eigenvalues();
+//              Eigen::MatrixXd U = es.eigenvectors();
+//              for (int i = 0; i < 6; i++)
+//                      D(i) = (D(i) < 0) ? 0 : D(i);
+//              local_hessian = U * D.asDiagonal()* U.inverse();
 		for (int v1 = 0; v1 < 6; v1++) {
 			for (int v2 = 0; v2 < 6; v2++) {
 				int v1_global = F(i,v1/2)*2 + v1%2;

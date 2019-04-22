@@ -53,8 +53,6 @@ bool DeformGUI::key_press(unsigned int key, int mod) {
       break;
     }
 
-  static MatrixXd interp, starting_triangulation = sd.w_uv, cslim_uv,
-      leap_reference, V_out;
   static double last_mesh_energy = ws_solver->compute_energy(sd.w_uv, false)/
       sd.mesh_measure - 2*d_.dim;
   static double accumulated_time = 0;
@@ -74,12 +72,12 @@ bool DeformGUI::key_press(unsigned int key, int mod) {
         ws_solver->after_mesh_improve();
       }
       if(auto_weight)
-     d_.set_scaffold_factor(
+         d_.set_scaffold_factor(
           (last_mesh_energy)*sd.mesh_measure /(sd.sf_num) / 100.0);
+
       if(!use_newton) {
         sd.energy = ws_solver->perform_iteration(sd.w_uv);
-      }
-      else {
+      } else {
         // no precomputation.
         SchaeferNewtonParametrizer snp(sd);
 

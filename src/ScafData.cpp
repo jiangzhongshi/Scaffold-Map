@@ -94,124 +94,100 @@ void ScafData::add_soft_constraints(int b, const Eigen::RowVectorXd &bc) {
 
 
 void ScafData::mesh_improve_3d(bool expand_frame) {
-    igl::Timer timer;
-    timer.start();
-    if (expand_frame) automatic_expand_frame(2,3);
-    MatrixXd m_uv = w_uv.topRows(mv_num);
-    MatrixXd frame(2,dim), bbox(2,dim);
-    frame << w_uv.colwise().maxCoeff(), w_uv.colwise().minCoeff();
-    bbox << m_uv.colwise().maxCoeff(), m_uv.colwise().minCoeff();
+  igl::Timer timer;
+  timer.start();
+  if (expand_frame)  automatic_expand_frame(2,3);
+  std::vector<Eigen::RowVector3d> V(v_num);
+  std::vector<Eigen::RowVector4i> T_in(inner_scaf_tets), T_out(sf_num -
+      inner_scaf_tets);
+  for (int i = 0; i < V.size(); i++) {
+    V[i] = w_uv.row(i);
+  }
+  for (int i = 0; i < inner_scaf_tets; i++) {
+    T_in[i] = s_T.row(i);
+  }
+  for(int i= inner_scaf_tets; i <sf_num; i++) {
+    T_out[i - inner_scaf_tets] = s_T.row(i);
+  }
 
-    std::cout<<"Frame" << frame<<std::endl;
-    std::cout<<"BBOX" << bbox<<std::endl;
-    std::vector<Eigen::RowVector3d> V(w_uv.rows());
-    std::vector<Eigen::RowVector4i> T(sf_num);
-    for (int i = 0; i < V.size(); i++) {
-      V[i] = w_uv.row(i);
+  auto tet_quality = [&V](int a, int b, int c, int d) -> double {
+    return -quality_utils::quality(V[a], V[b], V[c], V[d]);
+  };
+  auto orient3D = [&V](int a, int b, int c, int d) -> bool {
+    return -quality_utils::signed_volume(V[a], V[b], V[c], V[d]) > 0;
+  };
+    {
+      double min_q = INFINITY;
+      for (auto i=0; i<s_T.rows(); i++) {
+        RowVector4i r = s_T.row(i);
+        min_q = std::min(min_q, tet_quality(r(0), r(1), r(2), r(3)));
+      }
+      cout << endl << "q_in" << min_q << '\t';
     }
-    for (int i = 0; i < sf_num; i++) {
-      T[i] = s_T.row(i);
-    }
+  static decltype(T_in) TT_in, TTif_in;
+  static std::vector<Eigen::Matrix<int, 4, 3>> TTie_in;
+  static decltype(T_out) TT_out, TTif_out;
+  static std::vector<Eigen::Matrix<int, 4, 3>> TTie_out;
+  if(T_in.size() != TT_in.size())
+  {
+    igl::dev::tetrahedron_tetrahedron_adjacency(T_in, TT_in, TTif_in, TTie_in);
+    igl::dev::tetrahedron_tetrahedron_adjacency(T_out, TT_out, TTif_out, TTie_out);
+  }
 
-    decltype(T) TT, TTif;
-    std::vector<Eigen::Matrix<int, 4, 3>> TTie;
-    igl::dev::tetrahedron_tetrahedron_adjacency(T, TT, TTif, TTie);
-
-
-    // https://github.com/janba/DSC/blob/master/is_mesh/util.h#L415
-    struct test_utils {
-      using vec3 = Eigen::RowVector3d;
-      inline static double ms_length(const vec3 &a,
-                                     const vec3 &b,
-                                     const vec3 &c,
-                                     const vec3 &d) {
-        double result = 0.;
-        result += (a - b).squaredNorm();
-        result += (a - c).squaredNorm();
-        result += (a - d).squaredNorm();
-        result += (b - c).squaredNorm();
-        result += (b - d).squaredNorm();
-        result += (c - d).squaredNorm();
-        return result / 6.;
-      }
-
-      inline static double rms_length(const vec3 &a,
-                                      const vec3 &b,
-                                      const vec3 &c,
-                                      const vec3 &d) {
-        return sqrt(ms_length(a, b, c, d));
-      }
-
-      inline static double signed_volume(const vec3 &a,
-                                         const vec3 &b,
-                                         const vec3 &c,
-                                         const vec3 &d) {
-        return (a - d).dot((b - d).cross(c - d)) / 6.;
-      }
-
-    // https://hal.inria.fr/inria-00518327
-      inline static double quality(const vec3 &a,
-                                   const vec3 &b,
-                                   const vec3 &c,
-                                   const vec3 &d) {
-        double v = signed_volume(a, b, c, d);
-        double lrms = rms_length(a, b, c, d);
-
-        double q = 8.48528 * v / (lrms * lrms * lrms);
-#ifdef DEBUG
-        assert(!isnan(q));
-#endif
-        return q;
-      }
-    };
-
-    auto tet_quality = [&V](int a, int b, int c, int d) -> double {
-      return -test_utils::quality(V[a], V[b], V[c], V[d]);
-    };
-    auto orient3D = [&V](int a, int b, int c, int d) -> bool {
-      return -test_utils::signed_volume(V[a], V[b], V[c], V[d]) > 0;
-    };
-
-    std::cout << "Prepare Stellar" << timer.getElapsedTime()
+    std::cout << "Prepare TetRefine" << timer.getElapsedTime()
               << std::endl;
     timer.start();
     {
       double old_q = INFINITY;
-      for (auto r:T)
-        old_q = (std::min)(old_q, tet_quality(r(0), r(1), r(2), r(3)));
-      cout << endl << "q" << old_q << '\t';
+      for (auto r:T_in)
+        old_q = std::min(old_q, tet_quality(r(0), r(1), r(2), r(3)));
+      cout << endl << "q_in" << old_q << '\t';
     }
-    combined_improvement_pass(tet_quality, orient3D,
-                              [&](int vi) { return vi >= mv_num; },
-                              V, T, TT, TTif, TTie);
+  combined_improvement_pass(tet_quality, orient3D,
+                            [&](int vi) { return vi >= mv_num + frame_ids
+                                .size(); },
+                            V, T_in, TT_in, TTif_in, TTie_in);
     std::cout << "Combined Pass" << timer.getElapsedTime()
               << std::endl;
-    timer.start();
     {
       double old_q = INFINITY;
-      for (auto r:T)
-        old_q = (std::min)(old_q, tet_quality(r(0), r(1), r(2), r(3)));
-      cout << "q" << old_q << '\t';
+      for (auto r:T_in)
+        old_q = std::min(old_q, tet_quality(r(0), r(1), r(2), r(3)));
+      cout << "q_in" << old_q << '\t';
     }
-//  face_removal_pass(tet_quality, orient3D, T, TT, TTif, TTie);
-    std::cout << "FacePass" << timer.getElapsedTime()
+
+  timer.start();
+    {
+      double old_q = INFINITY;
+      for (auto r:T_out)
+        old_q = std::min(old_q, tet_quality(r(0), r(1), r(2), r(3)));
+      cout << endl << "q_out" << old_q << '\t';
+    }
+  combined_improvement_pass(tet_quality, orient3D,
+                            [&](int vi) { return vi >= mv_num + frame_ids.size(); },
+                            V, T_out, TT_out, TTif_out, TTie_out);
+    std::cout << "Combined Pass" << timer.getElapsedTime()
               << std::endl;
-    timer.start();
     {
       double old_q = INFINITY;
-      for (auto r:T)
-        old_q = (std::min)(old_q, tet_quality(r(0), r(1), r(2), r(3)));
-      cout << "q" << old_q << endl;
+      for (auto r:T_out)
+        old_q = std::min(old_q, tet_quality(r(0), r(1), r(2), r(3)));
+      cout << "q_in" << old_q << '\t';
     }
 
-    sf_num = T.size();
-    s_T.conservativeResize(sf_num, 4);
-    s_T = Eigen::Map<Eigen::Matrix<int, -1, -1, Eigen::RowMajor>>
-        ((int *) &T[0], sf_num, 4);
+  inner_scaf_tets = T_in.size();
+  sf_num = inner_scaf_tets + T_out.size();
+  s_T.resize(sf_num, 4);
+  s_T.topRows(inner_scaf_tets) = Eigen::Map<Eigen::Matrix<int, -1, -1, Eigen::RowMajor>>
+      ((int *) &T_in[0], inner_scaf_tets, 4);
+  s_T.bottomRows(T_out.size()) =Eigen::Map<Eigen::Matrix<int, -1, -1, Eigen::RowMajor>>
+      ((int *) &T_out[0], T_out.size(), 4);
 
+  if(v_num != V.size()) {
     v_num = V.size();
     w_uv = Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>
         ((double *) &V[0], v_num, 3);
+  }
 }
 
 void ScafData::mesh_improve(bool square_frame, bool expand_frame) {

@@ -98,7 +98,7 @@ void ReWeightedARAP::simplified_covariance_scatter_matrix(
 }
 
 //only 2D
-void ReWeightedARAP::compute_scaffold_gradient_matrix(
+void ReWeightedARAP::compute_scaffold_gradient_matrix_2d(
     Eigen::SparseMatrix<double> &D1, Eigen::SparseMatrix<double> &D2)
 {
   assert(d_.dim == 2);
@@ -148,8 +148,8 @@ void ReWeightedARAP::pre_calc()
   if (!has_pre_calc)
   {
 
-    v_n = d_.mv_num + d_.sv_num;
-    f_n = d_.mf_num + d_.sf_num;
+    d_.v_num = d_.mv_num + d_.sv_num;
+    d_.f_num = d_.mf_num + d_.sf_num;
     if (d_.dim == 2)
     {
       Eigen::MatrixXd F1, F2, F3;
@@ -157,7 +157,7 @@ void ReWeightedARAP::pre_calc()
       compute_surface_gradient_matrix(d_.m_V, d_.m_T, F1, F2, Dx_m,
                                       Dy_m);
 
-      compute_scaffold_gradient_matrix(Dx_s, Dy_s);
+      compute_scaffold_gradient_matrix_2d(Dx_s, Dy_s);
     }
     else
     {
@@ -206,9 +206,9 @@ void ReWeightedARAP::pre_calc()
       Eigen::SparseMatrix<double> Gs;
       igl::grad(d_.w_uv, d_.s_T, Gs);
 
-      Dx_s = Gs.block(0, 0, d_.sf_num, v_n);
-      Dy_s = Gs.block(d_.sf_num, 0, d_.sf_num, v_n);
-      Dz_s = Gs.block(2 * d_.sf_num, 0, d_.sf_num, v_n);
+      Dx_s = Gs.block(0, 0, d_.sf_num, d_.v_num);
+      Dy_s = Gs.block(d_.sf_num, 0, d_.sf_num, d_.v_num);
+      Dz_s = Gs.block(2 * d_.sf_num, 0, d_.sf_num, d_.v_num);
     }
     int dim = d_.dim;
 
@@ -230,18 +230,6 @@ void ReWeightedARAP::pre_calc()
   }
 }
 
-void ReWeightedARAP::solve_weighted_proxy(Eigen::MatrixXd &uv_new)
-{
-  igl::Timer timer;
-  timer.start();
-  compute_jacobians(uv_new);
-  igl::slim_update_weights_and_closest_rotations_with_jacobians(Ji_m, d_.slim_energy,
-                                                                0, W_m, Ri_m);
-  igl::slim_update_weights_and_closest_rotations_with_jacobians(Ji_s, d_.scaf_energy,
-                                                                0, W_s, Ri_s);
-  //  cout << "update_weigths = "<<timer.getElapsedTime()<<endl;
-  solve_weighted_arap(uv_new);
-}
 
 void ReWeightedARAP::compute_jacobians(const Eigen::MatrixXd &uv,
                                        const Eigen::SparseMatrix<double> &Dx,
@@ -249,6 +237,8 @@ void ReWeightedARAP::compute_jacobians(const Eigen::MatrixXd &uv,
                                        const Eigen::SparseMatrix<double> &Dz,
                                        Eigen::MatrixXd &Ji)
 {
+  if (Dx.rows() == 0) // No need to, assert doing ARAP
+    return;
   if (Dz.rows()==0) {
   // Ji=[D1*u,D2*u,D1*v,D2*v];
   Ji.resize(Dx.rows(), 4);
@@ -276,7 +266,7 @@ double ReWeightedARAP::compute_energy(const Eigen::MatrixXd &V_new,
 {
   compute_jacobians(V_new, whole);
   double energy = 0;
-  if (d_.dim==2 || d_.m_T.cols() == 4) {
+  if (Ji_m.rows() != 0) {
     energy += igl::mapping_energy_with_jacobians(Ji_m, d_.m_M, d_.slim_energy, 0);
   } else {    // arap
     energy += compute_surface_ARAP_energy(V_new);
@@ -290,9 +280,7 @@ double ReWeightedARAP::compute_energy(const Eigen::MatrixXd &V_new,
 }
 void ReWeightedARAP::compute_jacobians(const MatrixXd &V_new, bool whole)
 {
-  Eigen::MatrixXd m_V_new = V_new.topRows(d_.mv_num);
-  if (d_.m_T.cols() == 4 || d_.dim ==2)
-    compute_jacobians(m_V_new, Dx_m, Dy_m, Dz_m, Ji_m);
+  compute_jacobians(V_new.topRows(d_.mv_num), Dx_m, Dy_m, Dz_m, Ji_m);
   if (whole) compute_jacobians(V_new, Dx_s, Dy_s, Dz_s, Ji_s);
 }
 
@@ -310,7 +298,7 @@ void ReWeightedARAP::change_scaffold_reference(const MatrixXd &s_uv)
   int dim = d_.dim;
   if (dim == 2)
   {
-    compute_scaffold_gradient_matrix(Dx_s, Dy_s);
+    compute_scaffold_gradient_matrix_2d(Dx_s, Dy_s);
   }
   else
   {
@@ -331,7 +319,14 @@ void ReWeightedARAP::change_scaffold_reference(const MatrixXd &s_uv)
 double ReWeightedARAP::perform_iteration(MatrixXd &w_uv)
 {
   Eigen::MatrixXd V_out = w_uv;
-  solve_weighted_proxy(V_out);
+
+  compute_jacobians(V_out, true);
+  igl::slim_update_weights_and_closest_rotations_with_jacobians(Ji_m, d_.slim_energy,
+                                                                0, W_m, Ri_m);
+  igl::slim_update_weights_and_closest_rotations_with_jacobians(Ji_s, d_.scaf_energy,
+                                                                0, W_s, Ri_s);
+  solve_weighted_arap(V_out);
+
   auto whole_E =
       [this](Eigen::MatrixXd &uv) { return this->compute_energy(uv); };
 
@@ -345,23 +340,6 @@ double ReWeightedARAP::perform_iteration(MatrixXd &w_uv)
   double energy = igl::flip_avoiding_line_search(w_T, w_uv, V_out,
                                                  whole_E, -1) /
                   d_.mesh_measure;
-  return energy;
-}
-
-double ReWeightedARAP::perform_iteration(Eigen::MatrixXd &w_uv,
-                                         bool whole)
-{
-  Eigen::MatrixXd V_out = w_uv;
-  solve_weighted_proxy(V_out);
-
-  auto whole_E = [this, whole](Eigen::MatrixXd &uv) { return this->compute_energy(uv); }; // whole
-
-  igl::Timer timer;
-  timer.start();
-  double energy = igl::flip_avoiding_line_search(d_.s_T, w_uv, V_out,
-                                                 whole_E, -1) /
-                  d_.mesh_measure;
-  //  cout << "LineSearch = " << timer.getElapsedTime()<<endl;
   return energy;
 }
 
@@ -379,20 +357,18 @@ void ReWeightedARAP::after_mesh_improve()
 {
   // differ to pre_calc in the sense of only updating scaffold ones
 
-  v_n = d_.mv_num + d_.sv_num;
-  f_n = d_.mf_num + d_.sf_num;
   if (d_.dim == 2)
   {
-    compute_scaffold_gradient_matrix(Dx_s, Dy_s);
+    compute_scaffold_gradient_matrix_2d(Dx_s, Dy_s);
   }
   else
   {
     Eigen::SparseMatrix<double> Gs;
     igl::grad(d_.w_uv, d_.s_T, Gs);
 
-    Dx_s = Gs.block(0, 0, d_.sf_num, v_n);
-    Dy_s = Gs.block(d_.sf_num, 0, d_.sf_num, v_n);
-    Dz_s = Gs.block(2 * d_.sf_num, 0, d_.sf_num, v_n);
+    Dx_s = Gs.block(0, 0, d_.sf_num, d_.v_num);
+    Dy_s = Gs.block(d_.sf_num, 0, d_.sf_num, d_.v_num);
+    Dz_s = Gs.block(2 * d_.sf_num, 0, d_.sf_num, d_.v_num);
   }
   int dim = d_.dim;
 

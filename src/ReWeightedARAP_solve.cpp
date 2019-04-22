@@ -53,6 +53,7 @@ void ReWeightedARAP::solve_weighted_arap(Eigen::MatrixXd &uv)
   using namespace Eigen;
   using namespace std;
   int dim = d_.dim;
+  auto v_n = d_.v_num;
   igl::Timer timer;
   timer.start();
 

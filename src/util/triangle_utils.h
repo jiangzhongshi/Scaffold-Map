@@ -87,14 +87,6 @@ inline void soft_cat(
 };
 
 
-
-void
-scaffold_interpolation(const Eigen::MatrixXd &w_V, const Eigen::MatrixXi &w_F,
-                       const Eigen::MatrixXd &target_uv,
-                       const Eigen::VectorXi &out_bnd,
-                       const Eigen::VectorXi &inn_bnd, int harmonic_order,
-                       Eigen::MatrixXd &interp);
-
 void my_split(const Eigen::MatrixXd &V,
               const Eigen::MatrixXi &F,
               int mv_num, int mf_num,

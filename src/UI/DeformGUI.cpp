@@ -135,6 +135,77 @@ bool DeformGUI::mouse_up(int button, int mod) {
   return true;
 }
 
+void DeformGUI::show_box()
+{
+       Eigen::MatrixXi box_F, plot_F;
+       igl::boundary_facets(d_.s_T, box_F);
+ //        igl::cat(1, d_.surface_F, box_F,  plot_F);
+       v_.data().set_mesh(d_.w_uv, d_.surface_F);
+       {
+         for (int i = 0; i < box_F.rows(); i++) {
+           Eigen::MatrixXi edges(3, 2);
+           edges << 0, 1, 1, 2, 2, 0;
+           for (int e = 0; e < 3; e++) {
+             v_.data().add_edges
+                 (
+                     d_.w_uv.row(box_F(i, edges(e, 0))),
+                     d_.w_uv.row(box_F(i, edges(e, 1))),
+                     Eigen::RowVector3d(0, 0, 0)
+                 );
+           }
+         }
+       }
+       {
+         // Find the bounding box
+         Eigen::Vector3d m = d_.w_uv.colwise().minCoeff();
+         Eigen::Vector3d M = d_.w_uv.colwise().maxCoeff();
+
+         // Corners of the bounding box
+         Eigen::MatrixXd V_box(8, 3);
+         V_box <<
+               m(0), m(1), m(2),
+             M(0), m(1), m(2),
+             M(0), M(1), m(2),
+             m(0), M(1), m(2),
+             m(0), m(1), M(2),
+             M(0), m(1), M(2),
+             M(0), M(1), M(2),
+             m(0), M(1), M(2);
+
+         // Edges of the bounding box
+         Eigen::MatrixXi E_box(12, 2);
+         E_box <<
+               0, 1,
+             1, 2,
+             2, 3,
+             3, 0,
+             4, 5,
+             5, 6,
+             6, 7,
+             7, 4,
+             0, 4,
+             1, 5,
+             2, 6,
+             7, 3;
+
+         // Plot the corners of the bounding box as points
+
+         // Plot the edges of the bounding box
+         for (unsigned i = 0; i < E_box.rows(); ++i)
+           v_.data().add_edges
+               (
+                   V_box.row(E_box(i, 0)),
+                   V_box.row(E_box(i, 1)),
+                   Eigen::RowVector3d(0, 0, 0)
+               );
+
+         v_.data().dirty |= igl::opengl::MeshGL::DIRTY_ALL;
+
+       }
+       v_.data().set_face_based(true);
+}
+
+
 DeformGUI::DeformGUI(igl::opengl::glfw::Viewer &vi,
                      StateManager &state) :
     v_(vi),
@@ -160,9 +231,10 @@ DeformGUI::DeformGUI(igl::opengl::glfw::Viewer &vi,
 //    return extended_menu();
 //  };
   extended_menu();
-
+  show_box();
   v_.data().set_mesh(d_.w_uv, d_.surface_F);
-  scaffold_coloring();
+
+    scaffold_coloring();
   v_.data().set_face_based(true);
   v_.data().show_overlay_depth = false;
 
@@ -297,6 +369,8 @@ bool DeformGUI::extended_menu()
                    igl::file_dialog_save
                        ());
     }
+
+    if(ImGui::Button("ShowBox"))  show_box();
 
 		ImGui::End();
 	};

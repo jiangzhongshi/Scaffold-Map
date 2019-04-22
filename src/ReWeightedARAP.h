@@ -23,13 +23,10 @@ public:
 
   void pre_calc() ;
 
-  void solve_weighted_proxy(Eigen::MatrixXd &uv_new);
-
   double compute_energy(const Eigen::MatrixXd &V_new,
                                               bool whole = true) ;
 
   double perform_iteration(Eigen::MatrixXd &w_uv) ;
-  double perform_iteration(Eigen::MatrixXd &w_uv,bool dummy) ;
   void change_scaffold_reference(const Eigen::MatrixXd &s_uv) ; // Go To ScafData
 private: // utilities
   static void simplified_covariance_scatter_matrix(
@@ -38,7 +35,7 @@ private: // utilities
       Eigen::SparseMatrix<double>& Dx,Eigen::SparseMatrix<double>& Dy,
       Eigen::SparseMatrix<double>& Dz );
 
-  void compute_scaffold_gradient_matrix(Eigen::SparseMatrix<double> &D1,
+  void compute_scaffold_gradient_matrix_2d(Eigen::SparseMatrix<double> &D1,
                                         Eigen::SparseMatrix<double> &D2);
 
   void compute_jacobians(const Eigen::MatrixXd &V_o, bool whole = true);
@@ -87,8 +84,6 @@ private: // utilities
 
   Eigen::SparseMatrix<double> Dx_s, Dy_s, Dz_s; //ScafData
   Eigen::SparseMatrix<double> Dx_m, Dy_m, Dz_m; // ScafData
-
-  int f_n, v_n;
 
  public:
   bool has_pre_calc = false;

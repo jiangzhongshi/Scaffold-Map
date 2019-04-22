@@ -105,8 +105,6 @@ iter_count(0) {
     this->scaf_data.inner_scaf_tets = scaf_inner_tets; 
     break;
   }
-    default:
-      assert(false);
   }
 
   ws_solver.reset(new ReWeightedARAP(scaf_data));
