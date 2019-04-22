@@ -88,6 +88,7 @@ iter_count(0) {
       break;
     case DemoType::PARAM :read_mesh_with_uv_seam(filename, V0, T0);
       this->scaf_data.add_new_patch(V0, T0, RowVector2d(0, 0));
+      this->scaf_data.mesh_improve(false, true);
       break;
     case DemoType::BARS:
         assert(false);

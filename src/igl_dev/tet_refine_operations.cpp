@@ -24,12 +24,11 @@ bool tet_tuple_edge_contraction(int ti,
                                 std::vector<Eigen::Matrix<int, 4, 3>> &TTie,
                                 std::vector<int> &new_tets_id) {
 
-
-
+//  return false;
   auto v1 = igl::dev::tet_tuple_get_vert(ti, fi, ei, !along,
                                          T, TT, TTif, TTie);
   int v0 = -1;
-  bool v0_v1_can_exchange = true; // the ending point can either be 0 or 1
+  bool v0_v1_can_exchange = false; // the ending point can either be 0 or 1
   if(!vertex_editable(v1)) {
     v0 = v1;
     along = !along;

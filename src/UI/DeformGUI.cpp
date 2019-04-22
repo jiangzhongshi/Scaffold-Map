@@ -231,7 +231,6 @@ DeformGUI::DeformGUI(igl::opengl::glfw::Viewer &vi,
 //    return extended_menu();
 //  };
   extended_menu();
-  //  show_box();
   v_.data().set_mesh(d_.w_uv, d_.surface_F);
 
     scaffold_coloring();
@@ -370,7 +369,7 @@ bool DeformGUI::extended_menu()
                        ());
     }
 
-    if(ImGui::Button("ShowBox"))  show_box();
+    if(d_.dim==3 && ImGui::Button("ShowBox"))  show_box();
 
 		ImGui::End();
 	};
