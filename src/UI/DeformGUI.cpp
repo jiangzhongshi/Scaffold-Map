@@ -231,7 +231,7 @@ DeformGUI::DeformGUI(igl::opengl::glfw::Viewer &vi,
 //    return extended_menu();
 //  };
   extended_menu();
-  show_box();
+  //  show_box();
   v_.data().set_mesh(d_.w_uv, d_.surface_F);
 
     scaffold_coloring();

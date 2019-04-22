@@ -24,7 +24,7 @@ the root folder:
 ```bash
 mkdir build
 cd build
-cmake ../
+cmake -DCMAKE_BUILD_TYPE=Release ../
 make
 ```
 ### Running
