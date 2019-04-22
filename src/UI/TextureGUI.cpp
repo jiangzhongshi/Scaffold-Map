@@ -353,7 +353,10 @@ bool TextureGUI::computation_for_png_dumping() {
       bool auto_expand = false;
       if(auto_expand)
         d_.rect_frame_V.resize(0,0);
-      ws->mesh_improve();
+      d_.mesh_improve(true, //square frame
+                      true //expand frame
+                  );
+      ws->after_mesh_improve();
     }
 
 
@@ -426,10 +429,9 @@ bool TextureGUI::background_computation() {
       bool auto_expand = false;
       if(auto_expand)
         d_.rect_frame_V.resize(0,0);
-      ws->mesh_improve();
-    } else {
-      ws->after_mesh_improve();
-    }
+      d_.mesh_improve();
+     }
+    ws->after_mesh_improve();
 
 
     if (auto_weighting_) {

@@ -226,7 +226,7 @@ bool DeformGUI::extended_menu()
     {
         ImGui::Text("iteration count %d", s_.iter_count);
         ImGui::Text("V %ld F %ld", d_.mv_num, d_.mf_num);
-        ImGui::Text("Scaf V %ld F %ld", d_.sv_num, d_.sf_num);
+        ImGui::Text("Scaf V %ld F %ld T %ld", d_.sv_num, d_.sf_num, d_.s_T.rows());
     }
     if (ImGui::CollapsingHeader("Serialization", ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -285,7 +285,7 @@ bool DeformGUI::extended_menu()
 
     float val = d_.scaffold_factor;
     if (ImGui::InputFloat("Scaf Weight",&val)) {
-        s_.ws_solver->adjust_scaf_weight(val);
+        d_.set_scaffold_factor(val);
          std::cout << "Weight:" << val << std::endl;
     }
     if (ImGui::Button("Clear Constraints")) {

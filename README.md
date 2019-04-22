@@ -29,7 +29,7 @@ make
 ```
 ### Running
 ```bash
-./scaffold-map_bin -t 0 -m ../camel_b.obj
+./scaffold-map_bin -t 2 -m ../camel_b.obj
 ```
 Press `[space]` to perform one iteration. You can also try to drag it around!
 

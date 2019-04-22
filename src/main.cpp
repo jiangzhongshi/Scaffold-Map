@@ -1,7 +1,6 @@
 #include "ReWeightedARAP.h"
 #include "StateManager.h"
 #include "UI/DeformGUI.h"
-#include "UI/TextureGUI.h"
 #include "util/triangle_utils.h"
 #include <igl/Timer.h>
 #include <igl/opengl/glfw/Viewer.h>
@@ -24,16 +23,10 @@ int main(int argc, char* argv[]) {
 
   StateManager s_(filename, static_cast<DemoType>(demo_type));
 #ifndef NOGUI
-  bool complex_ui = false;
-  if(complex_ui) {
-    TextureGUI gui(s_);
-    gui.launch();
-  } else {
     igl::opengl::glfw::Viewer v;
 
     DeformGUI gui(v, s_);
     v.launch();
-  }
 #else
   using namespace Eigen;
   using namespace std;
@@ -53,7 +46,7 @@ int main(int argc, char* argv[]) {
     ws->mesh_improve();
 
     double new_weight = d_.mesh_measure * last_mesh_energy / (d_.sf_num*100 );
-    ws->adjust_scaf_weight(new_weight);
+    d_.adjust_scaf_weight(new_weight);
 
     d_.energy = ws->perform_iteration(d_.w_uv);
 

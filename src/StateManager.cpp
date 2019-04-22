@@ -73,6 +73,7 @@ void parameterization_init( std::string filename, Eigen::MatrixXd& V_ref,
 void tight_packing_init(std::string, ScafData&);
 StateManager::StateManager(std::string filename, DemoType demo_type):
 model_file(filename),
+demo_type(demo_type),
 iter_count(0) {
   using namespace Eigen;
 //

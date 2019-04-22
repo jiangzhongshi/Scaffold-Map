@@ -78,8 +78,6 @@ void ScafData::update_scaffold()
   sv_num = v_num - mv_num;
   f_num = sf_num + mf_num;
 
-//  igl::doublearea(w_uv, s_T, s_M);
-//  s_M *= 10*scaffold_factor;
   s_M = Eigen::VectorXd::Constant(sf_num, scaffold_factor);
 }
 
@@ -95,11 +93,17 @@ void ScafData::add_soft_constraints(int b, const Eigen::RowVectorXd &bc) {
 }
 
 
-void ScafData::mesh_improve(bool in_packing = false) {
-  if (dim == 3) {
+void ScafData::mesh_improve_3d(bool expand_frame) {
     igl::Timer timer;
     timer.start();
-    automatic_expand_frame(2,3);
+    if (expand_frame) automatic_expand_frame(2,3);
+    MatrixXd m_uv = w_uv.topRows(mv_num);
+    MatrixXd frame(2,dim), bbox(2,dim);
+    frame << w_uv.colwise().maxCoeff(), w_uv.colwise().minCoeff();
+    bbox << m_uv.colwise().maxCoeff(), m_uv.colwise().minCoeff();
+
+    std::cout<<"Frame" << frame<<std::endl;
+    std::cout<<"BBOX" << bbox<<std::endl;
     std::vector<Eigen::RowVector3d> V(w_uv.rows());
     std::vector<Eigen::RowVector4i> T(sf_num);
     for (int i = 0; i < V.size(); i++) {
@@ -208,8 +212,11 @@ void ScafData::mesh_improve(bool in_packing = false) {
     v_num = V.size();
     w_uv = Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>
         ((double *) &V[0], v_num, 3);
-  } else {
+}
 
+void ScafData::mesh_improve(bool square_frame, bool expand_frame) {
+  if (dim == 3) {mesh_improve_3d(expand_frame); }
+    else {
     MatrixXd m_uv = w_uv.topRows(mv_num);
     MatrixXd V_bnd;
     V_bnd.resize(internal_bnd.size(), 2);
@@ -218,7 +225,7 @@ void ScafData::mesh_improve(bool in_packing = false) {
       V_bnd.row(i) = m_uv.row(internal_bnd(i));
     }
 
-    if(rect_frame_V.size() == 0) {
+    if(expand_frame) {
       Matrix2d ob;// = rect_corners;
       {
         VectorXd uv_max = m_uv.colwise().maxCoeff();
@@ -234,7 +241,7 @@ void ScafData::mesh_improve(bool in_packing = false) {
       rect_len << ob(1, 0) - ob(0, 0), ob(1, 1) - ob(0, 1);
       int frame_points = 5;
 
-      if(in_packing) {
+      if(square_frame) {
         // adjust to square, as in packing
         if (rect_len(0) > rect_len(1)) {
           ob(1, 1) = ob(0, 1) + rect_len(0);
@@ -321,7 +328,7 @@ void ScafData::automatic_expand_frame(double min2, double max3) {
   MatrixXd frame(2,dim), bbox(2,dim);
   frame << w_uv.colwise().maxCoeff(), w_uv.colwise().minCoeff();
   bbox << m_uv.colwise().maxCoeff(), m_uv.colwise().minCoeff();
-  RowVector2d center = bbox.colwise().mean();
+  RowVectorXd center = bbox.colwise().mean();
 /*
   bbox.row(0) -= center;
   bbox.row(1) -= center;
@@ -371,6 +378,11 @@ void ScafData::automatic_expand_frame(double min2, double max3) {
       }
     }
   }
+}
+
+void ScafData::set_scaffold_factor(double weight) {
+    scaffold_factor = weight;
+    update_scaffold();
 }
 
 void ScafData::add_new_patch(const Eigen::MatrixXd &V_in,

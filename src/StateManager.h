@@ -25,6 +25,8 @@ struct StateManager
   void load(std::string);
   void save(std::string);
 
+  DemoType demo_type;
+
   //data
   ScafData scaf_data;
   int iter_count = 0;

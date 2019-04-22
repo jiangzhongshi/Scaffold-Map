@@ -36,9 +36,22 @@ bool DeformGUI::key_press(unsigned int key, int mod) {
   using namespace std;
   ScafData &sd = s_.scaf_data;
   auto ws_solver = s_.ws_solver;
-  bool &optimize_scaf = s_.optimize_scaffold;
-  bool adjust_frame = true;
-  int &iteration_count = s_.iter_count;
+  bool adjust_frame = false;
+  bool use_square_frame = false;
+  switch (s_.demo_type){
+    case DemoType::PACKING:
+      adjust_frame = true;
+      use_square_frame = true;
+      break;
+     case DemoType::FLOW:
+      adjust_frame = false;
+      use_square_frame = false;
+      break;
+     case DemoType::PARAM:
+      adjust_frame = true;
+      use_square_frame = false;
+      break;
+    }
 
   static MatrixXd interp, starting_triangulation = sd.w_uv, cslim_uv,
       leap_reference, V_out;
@@ -49,20 +62,19 @@ bool DeformGUI::key_press(unsigned int key, int mod) {
 
     for (int i = 0; i < inner_iters; i++) {
       std::cout << "=============" << std::endl;
-      std::cout << "Iteration:" << iteration_count++ << '\t';
+      std::cout << "Iteration:" << s_.iter_count++ << '\t';
       igl::Timer timer;
 
       timer.start();
-      if(optimize_scaf) {
-        d_.rect_frame_V.resize(0,0);
-        d_.mesh_improve(false);
+      if(s_.optimize_scaffold) {
+        d_.mesh_improve(use_square_frame, adjust_frame);
         if(!use_newton) ws_solver->after_mesh_improve();
       } else {
         d_.automatic_expand_frame(2,3);
         ws_solver->after_mesh_improve();
       }
       if(auto_weight)
-      ws_solver->adjust_scaf_weight(
+     d_.set_scaffold_factor(
           (last_mesh_energy)*sd.mesh_measure /(sd.sf_num) / 100.0);
       if(!use_newton) {
         sd.energy = ws_solver->perform_iteration(sd.w_uv);

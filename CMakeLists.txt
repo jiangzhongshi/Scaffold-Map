@@ -33,6 +33,7 @@ if(NOGUI)
 endif()
 
 include(DownloadProject)
+
 download_project(
   PROJ         libigl
   SOURCE_DIR   ${CMAKE_SOURCE_DIR}/external/libigl
@@ -40,6 +41,7 @@ download_project(
   QUIET
   GIT_REPOSITORY https://github.com/jiangzhongshi/libigl.git
 )
+
 download_project(
   PROJ cli11
   SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/cli11
@@ -64,12 +66,16 @@ target_link_libraries(scaffold_map PUBLIC igl::triangle igl::core igl::tetgen ig
 
 
 FILE(GLOB SRCFILES
-    "src/UI/*.cpp"
-    "src/util/*.cpp"
     "src/demo/*.cpp"
     "src/Newton/*.cpp")
 
-add_library(scaf_utils ${SRCFILES})
+add_library(scaf_utils
+    src/UI/DeformGUI.cpp
+    src/UI/DeformGUI_key_press.cpp
+    src/util/triangle_utils.cpp
+    src/util/tet_utils.cpp
+    src/util/tetgenio_parser.cpp
+    ${SRCFILES})
 
 add_executable(${PROJECT_NAME}_bin src/main.cpp)
 target_link_libraries(scaf_utils PUBLIC igl::png igl::triangle igl::tetgen igl::opengl_glfw igl::opengl_glfw_imgui)

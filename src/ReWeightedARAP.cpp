@@ -147,13 +147,9 @@ void ReWeightedARAP::pre_calc()
 {
   if (!has_pre_calc)
   {
-    mv_n = d_.mv_num;
-    mf_n = d_.mf_num;
-    sv_n = d_.sv_num;
-    sf_n = d_.sf_num;
 
-    v_n = mv_n + sv_n;
-    f_n = mf_n + sf_n;
+    v_n = d_.mv_num + d_.sv_num;
+    f_n = d_.mf_num + d_.sf_num;
     if (d_.dim == 2)
     {
       Eigen::MatrixXd F1, F2, F3;
@@ -173,7 +169,7 @@ void ReWeightedARAP::pre_calc()
         typedef double Scalar;
 
         // number of vertices
-        data.n = mv_n;
+        data.n = d_.mv_num;
         //assert(F.cols() == 3 && "For now only triangles");
         // dimension
         //const int dim = V.cols();
@@ -202,17 +198,17 @@ void ReWeightedARAP::pre_calc()
         Eigen::SparseMatrix<double> Gm;
         igl::grad(d_.m_V, d_.m_T, Gm);
 
-        Dx_m = Gm.block(0, 0, mf_n, mv_n);
-        Dy_m = Gm.block(mf_n, 0, mf_n, mv_n);
-        Dz_m = Gm.block(2 * mf_n, 0, mf_n, mv_n);
+        Dx_m = Gm.block(0, 0, d_.mf_num, d_.mv_num);
+        Dy_m = Gm.block(d_.mf_num, 0, d_.mf_num, d_.mv_num);
+        Dz_m = Gm.block(2 * d_.mf_num, 0, d_.mf_num, d_.mv_num);
       }
 
       Eigen::SparseMatrix<double> Gs;
       igl::grad(d_.w_uv, d_.s_T, Gs);
 
-      Dx_s = Gs.block(0, 0, sf_n, v_n);
-      Dy_s = Gs.block(sf_n, 0, sf_n, v_n);
-      Dz_s = Gs.block(2 * sf_n, 0, sf_n, v_n);
+      Dx_s = Gs.block(0, 0, d_.sf_num, v_n);
+      Dy_s = Gs.block(d_.sf_num, 0, d_.sf_num, v_n);
+      Dz_s = Gs.block(2 * d_.sf_num, 0, d_.sf_num, v_n);
     }
     int dim = d_.dim;
 
@@ -234,37 +230,15 @@ void ReWeightedARAP::pre_calc()
   }
 }
 
-template <>
-void ReWeightedARAP::update_weights_and_closest_rotations<2>(
-    const Eigen::MatrixXd &Ji,
-    ScafData::SLIM_ENERGY energy_type,
-    Eigen::MatrixXd &W,
-    Eigen::MatrixXd &Ri);
-template <>
-void ReWeightedARAP::update_weights_and_closest_rotations<3>(
-    const Eigen::MatrixXd &Ji,
-    ScafData::SLIM_ENERGY energy_type,
-    Eigen::MatrixXd &W,
-    Eigen::MatrixXd &Ri);
 void ReWeightedARAP::solve_weighted_proxy(Eigen::MatrixXd &uv_new)
 {
   igl::Timer timer;
   timer.start();
   compute_jacobians(uv_new);
-  if (d_.dim == 2)
-  {
-    update_weights_and_closest_rotations<2>(Ji_m, d_.slim_energy,
-                                            W_m, Ri_m);
-    update_weights_and_closest_rotations<2>(Ji_s, d_.scaf_energy,
-                                            W_s, Ri_s);
-  }
-  else
-  {
-    update_weights_and_closest_rotations<3>(Ji_m, d_.slim_energy,
-                                            W_m, Ri_m);
-    update_weights_and_closest_rotations<3>(Ji_s, d_.scaf_energy,
-                                            W_s, Ri_s);
-  }
+  igl::slim_update_weights_and_closest_rotations_with_jacobians(Ji_m, d_.slim_energy,
+                                                                0, W_m, Ri_m);
+  igl::slim_update_weights_and_closest_rotations_with_jacobians(Ji_s, d_.scaf_energy,
+                                                                0, W_s, Ri_s);
   //  cout << "update_weigths = "<<timer.getElapsedTime()<<endl;
   solve_weighted_arap(uv_new);
 }
@@ -275,6 +249,14 @@ void ReWeightedARAP::compute_jacobians(const Eigen::MatrixXd &uv,
                                        const Eigen::SparseMatrix<double> &Dz,
                                        Eigen::MatrixXd &Ji)
 {
+  if (Dz.rows()==0) {
+  // Ji=[D1*u,D2*u,D1*v,D2*v];
+  Ji.resize(Dx.rows(), 4);
+  Ji.col(0) = Dx * uv.col(0);
+  Ji.col(1) = Dy * uv.col(0);
+  Ji.col(2) = Dx * uv.col(1);
+  Ji.col(3) = Dy * uv.col(1);
+    } else {
   // Ji=[D1*u,D2*u,D3*u, D1*v,D2*v, D3*v, D1*w,D2*w,D3*w];
   Ji.resize(Dx.rows(), 9);
   Ji.col(0) = Dx * uv.col(0);
@@ -286,352 +268,21 @@ void ReWeightedARAP::compute_jacobians(const Eigen::MatrixXd &uv,
   Ji.col(6) = Dx * uv.col(2);
   Ji.col(7) = Dy * uv.col(2);
   Ji.col(8) = Dz * uv.col(2);
-}
-
-void ReWeightedARAP::compute_jacobians(const Eigen::MatrixXd &uv,
-                                       const Eigen::SparseMatrix<double> &Dx,
-                                       const Eigen::SparseMatrix<double> &Dy,
-                                       Eigen::MatrixXd &Ji)
-{
-  // Ji=[D1*u,D2*u,D1*v,D2*v];
-  Ji.resize(Dx.rows(), 4);
-  Ji.col(0) = Dx * uv.col(0);
-  Ji.col(1) = Dy * uv.col(0);
-  Ji.col(2) = Dx * uv.col(1);
-  Ji.col(3) = Dy * uv.col(1);
-}
-
-template <>
-void ReWeightedARAP::update_weights_and_closest_rotations<2>(
-    const Eigen::MatrixXd &Ji,
-    ScafData::SLIM_ENERGY energy_type,
-    Eigen::MatrixXd &W,
-    Eigen::MatrixXd &Ri)
-{
-
-  const double eps = 1e-8;
-  double exp_f = d_.exp_factor;
-
-  W.resize(Ji.rows(), 4);
-  Ri.resize(Ji.rows(), 4);
-  for (int i = 0; i < Ji.rows(); ++i)
-  {
-    typedef Eigen::Matrix<double, 2, 2> Mat2;
-    typedef Eigen::Matrix<double, 2, 1> Vec2;
-    Mat2 ji, ri, ti, ui, vi;
-    Vec2 sing;
-    Vec2 closest_sing_vec;
-    Mat2 mat_W;
-    Vec2 m_sing_new;
-    double s1, s2;
-
-    ji(0, 0) = Ji(i, 0);
-    ji(0, 1) = Ji(i, 1);
-    ji(1, 0) = Ji(i, 2);
-    ji(1, 1) = Ji(i, 3);
-
-    igl::polar_svd(ji, ri, ti, ui, sing, vi);
-
-    s1 = sing(0);
-    s2 = sing(1);
-
-    // Branch between mesh face and scaffold faces.
-    switch (energy_type)
-    {
-    case ScafData::ARAP:
-    {
-      m_sing_new << 1, 1;
-      break;
     }
-    case ScafData::SYMMETRIC_DIRICHLET:
-    {
-      double s1_g = 2 * (s1 - pow(s1, -3));
-      double s2_g = 2 * (s2 - pow(s2, -3));
-      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
-                                                     s2_g / (2 * (s2 - 1)));
-      break;
-    }
-    case ScafData::LOG_ARAP:
-    {
-      double s1_g = 2 * (log(s1) / s1);
-      double s2_g = 2 * (log(s2) / s2);
-      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
-                                                     s2_g / (2 * (s2 - 1)));
-      break;
-    }
-    case ScafData::CONFORMAL:
-    {
-      double s1_g = 1 / (2 * s2) - s2 / (2 * pow(s1, 2));
-      double s2_g = 1 / (2 * s1) - s1 / (2 * pow(s2, 2));
-
-      double geo_avg = sqrt(s1 * s2);
-      double s1_min = geo_avg;
-      double s2_min = geo_avg;
-
-      m_sing_new << sqrt(s1_g / (2 * (s1 - s1_min))), sqrt(
-                                                          s2_g / (2 * (s2 - s2_min)));
-
-      // change local step
-      closest_sing_vec << s1_min, s2_min;
-      ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
-      break;
-    }
-    case ScafData::EXP_CONFORMAL:
-    {
-      double s1_g = 2 * (s1 - pow(s1, -3));
-      double s2_g = 2 * (s2 - pow(s2, -3));
-
-      double geo_avg = sqrt(s1 * s2);
-      double s1_min = geo_avg;
-      double s2_min = geo_avg;
-
-      double in_exp = exp_f * ((pow(s1, 2) + pow(s2, 2)) / (2 * s1 * s2));
-      double exp_thing = exp(in_exp);
-
-      s1_g *= exp_thing * exp_f;
-      s2_g *= exp_thing * exp_f;
-
-      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
-                                                     s2_g / (2 * (s2 - 1)));
-      break;
-    }
-    case ScafData::EXP_SYMMETRIC_DIRICHLET:
-    {
-      double s1_g = 2 * (s1 - pow(s1, -3));
-      double s2_g = 2 * (s2 - pow(s2, -3));
-
-      double in_exp =
-          exp_f * (pow(s1, 2) + pow(s1, -2) + pow(s2, 2) + pow(s2, -2));
-      double exp_thing = exp(in_exp);
-
-      s1_g *= exp_thing * exp_f;
-      s2_g *= exp_thing * exp_f;
-
-      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
-                                                     s2_g / (2 * (s2 - 1)));
-      break;
-    }
-    default:
-      break;
-    }
-
-    if (abs(s1 - 1) < eps)
-      m_sing_new(0) = 1;
-    if (abs(s2 - 1) < eps)
-      m_sing_new(1) = 1;
-
-    mat_W = ui * m_sing_new.asDiagonal() * ui.transpose();
-
-    W(i, 0) = mat_W(0, 0);
-    W(i, 1) = mat_W(0, 1);
-    W(i, 2) = mat_W(1, 0);
-    W(i, 3) = mat_W(1, 1);
-
-    // 2) Update local step (doesn't have to be a rotation, for instance in case of conformal energy)
-    Ri(i, 0) = ri(0, 0);
-    Ri(i, 1) = ri(1, 0);
-    Ri(i, 2) = ri(0, 1);
-    Ri(i, 3) = ri(1, 1);
-  }
-}
-
-template <>
-void ReWeightedARAP::update_weights_and_closest_rotations<3>(
-    const Eigen::MatrixXd &Ji,
-    ScafData::SLIM_ENERGY energy_type,
-    Eigen::MatrixXd &W,
-    Eigen::MatrixXd &Ri)
-{
-
-  const double eps = 1e-8;
-  double exp_f = d_.exp_factor;
-
-  typedef Eigen::Matrix<double, 3, 1> Vec3;
-  typedef Eigen::Matrix<double, 3, 3> Mat3;
-  Mat3 ji;
-  Vec3 m_sing_new;
-  Vec3 closest_sing_vec;
-  const double sqrt_2 = sqrt(2);
-
-  W.resize(Ji.rows(), 9);
-  Ri.resize(Ji.rows(), 9);
-  for (int i = 0; i < Ji.rows(); ++i)
-  {
-    ji(0, 0) = Ji(i, 0);
-    ji(0, 1) = Ji(i, 1);
-    ji(0, 2) = Ji(i, 2);
-    ji(1, 0) = Ji(i, 3);
-    ji(1, 1) = Ji(i, 4);
-    ji(1, 2) = Ji(i, 5);
-    ji(2, 0) = Ji(i, 6);
-    ji(2, 1) = Ji(i, 7);
-    ji(2, 2) = Ji(i, 8);
-
-    Mat3 ri, ti, ui, vi;
-    Vec3 sing;
-    igl::polar_svd(ji, ri, ti, ui, sing, vi);
-
-    double s1 = sing(0);
-    double s2 = sing(1);
-    double s3 = sing(2);
-
-    // 1) Update Weights
-    switch (energy_type)
-    {
-    case ScafData::ARAP:
-    {
-      m_sing_new << 1, 1, 1;
-      break;
-    }
-    case ScafData::LOG_ARAP:
-    {
-      double s1_g = 2 * (log(s1) / s1);
-      double s2_g = 2 * (log(s2) / s2);
-      double s3_g = 2 * (log(s3) / s3);
-      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
-                                                     s2_g / (2 * (s2 - 1))),
-          sqrt(s3_g / (2 * (s3 - 1)));
-      break;
-    }
-    case ScafData::SYMMETRIC_DIRICHLET:
-    {
-      double s1_g = 2 * (s1 - pow(s1, -3));
-      double s2_g = 2 * (s2 - pow(s2, -3));
-      double s3_g = 2 * (s3 - pow(s3, -3));
-      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
-                                                     s2_g / (2 * (s2 - 1))),
-          sqrt(s3_g / (2 * (s3 - 1)));
-      break;
-    }
-    case ScafData::EXP_SYMMETRIC_DIRICHLET:
-    {
-      double s1_g = 2 * (s1 - pow(s1, -3));
-      double s2_g = 2 * (s2 - pow(s2, -3));
-      double s3_g = 2 * (s3 - pow(s3, -3));
-      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
-                                                     s2_g / (2 * (s2 - 1))),
-          sqrt(s3_g / (2 * (s3 - 1)));
-
-      double in_exp = exp_f * (pow(s1, 2) + pow(s1, -2) + pow(s2, 2) + pow(s2, -2) + pow(s3, 2) + pow(s3, -2));
-      double exp_thing = exp(in_exp);
-
-      s1_g *= exp_thing * exp_f;
-      s2_g *= exp_thing * exp_f;
-      s3_g *= exp_thing * exp_f;
-
-      m_sing_new << sqrt(s1_g / (2 * (s1 - 1))), sqrt(
-                                                     s2_g / (2 * (s2 - 1))),
-          sqrt(s3_g / (2 * (s3 - 1)));
-
-      break;
-    }
-    case ScafData::CONFORMAL:
-    {
-      double common_div = 9 * (pow(s1 * s2 * s3, 5. / 3.));
-
-      double s1_g =
-          (-2 * s2 * s3 * (pow(s2, 2) + pow(s3, 2) - 2 * pow(s1, 2))) / common_div;
-      double s2_g =
-          (-2 * s1 * s3 * (pow(s1, 2) + pow(s3, 2) - 2 * pow(s2, 2))) / common_div;
-      double s3_g =
-          (-2 * s1 * s2 * (pow(s1, 2) + pow(s2, 2) - 2 * pow(s3, 2))) / common_div;
-
-      double closest_s = sqrt(pow(s1, 2) + pow(s3, 2)) / sqrt_2;
-      double s1_min = closest_s;
-      double s2_min = closest_s;
-      double s3_min = closest_s;
-
-      m_sing_new << sqrt(s1_g / (2 * (s1 - s1_min))), sqrt(
-                                                          s2_g / (2 * (s2 - s2_min))),
-          sqrt(
-              s3_g / (2 * (s3 - s3_min)));
-
-      // change local step
-      closest_sing_vec << s1_min, s2_min, s3_min;
-      ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
-      break;
-    }
-    case ScafData::EXP_CONFORMAL:
-    {
-      // E_conf = (s1^2 + s2^2 + s3^2)/(3*(s1*s2*s3)^(2/3) )
-      // dE_conf/ds1 = (-2*(s2*s3)*(s2^2+s3^2 -2*s1^2) ) / (9*(s1*s2*s3)^(5/3))
-      // Argmin E_conf(s1): s1 = sqrt(s1^2+s2^2)/sqrt(2)
-      double common_div = 9 * (pow(s1 * s2 * s3, 5. / 3.));
-
-      double s1_g =
-          (-2 * s2 * s3 * (pow(s2, 2) + pow(s3, 2) - 2 * pow(s1, 2))) / common_div;
-      double s2_g =
-          (-2 * s1 * s3 * (pow(s1, 2) + pow(s3, 2) - 2 * pow(s2, 2))) / common_div;
-      double s3_g =
-          (-2 * s1 * s2 * (pow(s1, 2) + pow(s2, 2) - 2 * pow(s3, 2))) / common_div;
-
-      double in_exp = exp_f * ((pow(s1, 2) + pow(s2, 2) + pow(s3, 2)) / (3 * pow((s1 * s2 * s3), 2. / 3)));
-      ;
-      double exp_thing = exp(in_exp);
-
-      double closest_s = sqrt(pow(s1, 2) + pow(s3, 2)) / sqrt_2;
-      double s1_min = closest_s;
-      double s2_min = closest_s;
-      double s3_min = closest_s;
-
-      s1_g *= exp_thing * exp_f;
-      s2_g *= exp_thing * exp_f;
-      s3_g *= exp_thing * exp_f;
-
-      m_sing_new << sqrt(s1_g / (2 * (s1 - s1_min))), sqrt(
-                                                          s2_g / (2 * (s2 - s2_min))),
-          sqrt(
-              s3_g / (2 * (s3 - s3_min)));
-
-      // change local step
-      closest_sing_vec << s1_min, s2_min, s3_min;
-      ri = ui * closest_sing_vec.asDiagonal() * vi.transpose();
-    }
-    }
-    if (std::abs(s1 - 1) < eps)
-      m_sing_new(0) = 1;
-    if (std::abs(s2 - 1) < eps)
-      m_sing_new(1) = 1;
-    if (std::abs(s3 - 1) < eps)
-      m_sing_new(2) = 1;
-    Mat3 mat_W;
-    mat_W = ui * m_sing_new.asDiagonal() * ui.transpose();
-
-    W(i, 0) = mat_W(0, 0);
-    W(i, 1) = mat_W(0, 1);
-    W(i, 2) = mat_W(0, 2);
-    W(i, 3) = mat_W(1, 0);
-    W(i, 4) = mat_W(1, 1);
-    W(i, 5) = mat_W(1, 2);
-    W(i, 6) = mat_W(2, 0);
-    W(i, 7) = mat_W(2, 1);
-    W(i, 8) = mat_W(2, 2);
-
-    // 2) Update closest rotations (not rotations in case of conformal energy)
-    Ri(i, 0) = ri(0, 0);
-    Ri(i, 1) = ri(1, 0);
-    Ri(i, 2) = ri(2, 0);
-    Ri(i, 3) = ri(0, 1);
-    Ri(i, 4) = ri(1, 1);
-    Ri(i, 5) = ri(2, 1);
-    Ri(i, 6) = ri(0, 2);
-    Ri(i, 7) = ri(1, 2);
-    Ri(i, 8) = ri(2, 2);
-  }
 }
 
 double ReWeightedARAP::compute_energy(const Eigen::MatrixXd &V_new,
                                       bool whole)
 {
   compute_jacobians(V_new, whole);
-
-  double energy = compute_energy_from_jacobians(Ji_m,
-                                                d_.m_M,
-                                                d_.slim_energy);
+  double energy = 0;
+  if (d_.dim==2 || d_.m_T.cols() == 4) {
+    energy += igl::mapping_energy_with_jacobians(Ji_m, d_.m_M, d_.slim_energy, 0);
+  } else {    // arap
+    energy += compute_surface_ARAP_energy(V_new);
+  }
   if (whole)
-    energy += compute_energy_from_jacobians(Ji_s,
-                                            d_.s_M,
-                                            d_.scaf_energy);
+    energy += igl::mapping_energy_with_jacobians(Ji_s, d_.s_M, d_.scaf_energy, 0);
 
   energy += compute_soft_constraint_energy(V_new);
 
@@ -639,130 +290,10 @@ double ReWeightedARAP::compute_energy(const Eigen::MatrixXd &V_new,
 }
 void ReWeightedARAP::compute_jacobians(const MatrixXd &V_new, bool whole)
 {
-  Eigen::MatrixXd m_V_new = V_new.topRows(mv_n);
-  if (d_.dim == 2)
-  {
-    compute_jacobians(m_V_new, Dx_m, Dy_m, Ji_m);
-    if (whole)
-      compute_jacobians(V_new, Dx_s, Dy_s, Ji_s);
-  }
-  else
-  {
+  Eigen::MatrixXd m_V_new = V_new.topRows(d_.mv_num);
+  if (d_.m_T.cols() == 4 || d_.dim ==2)
     compute_jacobians(m_V_new, Dx_m, Dy_m, Dz_m, Ji_m);
-    if (whole)
-      compute_jacobians(V_new, Dx_s, Dy_s, Dz_s, Ji_s);
-  }
-}
-
-double ReWeightedARAP::compute_energy_from_jacobians(const Eigen::MatrixXd &Ji,
-                                                     const VectorXd &areas,
-                                                     ScafData::SLIM_ENERGY energy_type)
-{
-  double energy = 0;
-  int dim = Ji.cols() == 4 ? 2 : 3;
-  if (dim == 2)
-  {
-    Eigen::Matrix<double, 2, 2> ji;
-    for (int i = 0; i < Ji.rows(); i++)
-    {
-      ji(0, 0) = Ji(i, 0);
-      ji(0, 1) = Ji(i, 1);
-      ji(1, 0) = Ji(i, 2);
-      ji(1, 1) = Ji(i, 3);
-
-      typedef Eigen::Matrix<double, 2, 2> Mat2;
-      typedef Eigen::Matrix<double, 2, 1> Vec2;
-      Mat2 ri, ti, ui, vi;
-      Vec2 sing;
-      igl::polar_svd(ji, ri, ti, ui, sing, vi);
-      double s1 = sing(0);
-      double s2 = sing(1);
-
-      switch (energy_type)
-      {
-      case ScafData::ARAP:
-      {
-        energy += areas(i) * (pow(s1 - 1, 2) + pow(s2 - 1, 2));
-        break;
-      }
-      case ScafData::SYMMETRIC_DIRICHLET:
-      {
-        energy +=
-            areas(i) * (pow(s1, 2) + pow(s1, -2) + pow(s2, 2) + pow(s2, -2));
-        break;
-      }
-      case ScafData::LOG_ARAP:
-      {
-        energy += areas(i) * (pow(log(s1), 2) + pow(log(s2), 2));
-        break;
-      }
-      case ScafData::CONFORMAL:
-      {
-        energy += areas(i) * ((pow(s1, 2) + pow(s2, 2)) / (2 * s1 * s2));
-        break;
-      }
-      default:
-        break;
-      }
-    }
-  }
-  else
-  {
-    Eigen::Matrix<double, 3, 3> ji;
-    for (int i = 0; i < Ji.rows(); i++)
-    {
-      ji(0, 0) = Ji(i, 0);
-      ji(0, 1) = Ji(i, 1);
-      ji(0, 2) = Ji(i, 2);
-      ji(1, 0) = Ji(i, 3);
-      ji(1, 1) = Ji(i, 4);
-      ji(1, 2) = Ji(i, 5);
-      ji(2, 0) = Ji(i, 6);
-      ji(2, 1) = Ji(i, 7);
-      ji(2, 2) = Ji(i, 8);
-
-      typedef Eigen::Matrix<double, 3, 3> Mat3;
-      typedef Eigen::Matrix<double, 3, 1> Vec3;
-      Mat3 ri, ti, ui, vi;
-      Vec3 sing;
-      igl::polar_svd(ji, ri, ti, ui, sing, vi);
-      double s1 = sing(0);
-      double s2 = sing(1);
-      double s3 = sing(2);
-
-      switch (energy_type)
-      {
-      case ScafData::ARAP:
-      {
-        energy += areas(i) * (pow(s1 - 1, 2) + pow(s2 - 1, 2) + pow(s3 - 1, 2));
-        break;
-      }
-      case ScafData::SYMMETRIC_DIRICHLET:
-      {
-        energy += areas(i) * (pow(s1, 2) + pow(s1, -2) + pow(s2, 2) + pow(s2, -2) + pow(s3, 2) + pow(s3, -2));
-        break;
-      }
-      case ScafData::LOG_ARAP:
-      {
-        energy += areas(i) * (pow(log(s1), 2) + pow(log(std::abs(s2)), 2) + pow(log(std::abs(s3)), 2));
-        break;
-      }
-      case ScafData::CONFORMAL:
-      {
-        energy += areas(i) * ((pow(s1, 2) + pow(s2, 2) + pow(s3, 2)) / (3 * pow(s1 * s2 * s3, 2. / 3.)));
-        break;
-      }
-      case ScafData::EXP_CONFORMAL:
-      {
-        energy += areas(i) * exp((pow(s1, 2) + pow(s2, 2) + pow(s3, 2)) / (3 * pow(s1 * s2 * s3, 2. / 3.)));
-        break;
-      }
-      default:
-        assert(false);
-      }
-    }
-  }
-  return energy;
+  if (whole) compute_jacobians(V_new, Dx_s, Dy_s, Dz_s, Ji_s);
 }
 
 void ReWeightedARAP::change_scaffold_reference(const MatrixXd &s_uv)
@@ -786,9 +317,9 @@ void ReWeightedARAP::change_scaffold_reference(const MatrixXd &s_uv)
     Eigen::SparseMatrix<double> G;
     igl::grad(V, F_s, G);
 
-    Dx_s = G.block(0, 0, sf_n, vn);
-    Dy_s = G.block(sf_n, 0, sf_n, vn);
-    Dz_s = G.block(2 * sf_n, 0, sf_n, vn);
+    Dx_s = G.block(0, 0, d_.sf_num, vn);
+    Dy_s = G.block(d_.sf_num, 0, d_.sf_num, vn);
+    Dz_s = G.block(2 * d_.sf_num, 0, d_.sf_num, vn);
   }
 
   Dx_s.makeCompressed();
@@ -796,14 +327,6 @@ void ReWeightedARAP::change_scaffold_reference(const MatrixXd &s_uv)
   Dz_s.makeCompressed();
 }
 
-void ReWeightedARAP::adjust_scaf_weight(double new_weight)
-{
-  d_.scaffold_factor = new_weight;
-  d_.update_scaffold();
-
-  //  for (int i = 0; i < d_.dim * d_.dim; i++)
-  //    M.segment(i * f_n, f_n) = d_.w_M;
-}
 
 double ReWeightedARAP::perform_iteration(MatrixXd &w_uv)
 {
@@ -852,35 +375,12 @@ ReWeightedARAP::compute_soft_constraint_energy(const Eigen::MatrixXd &uv) const
   return e;
 }
 
-void ReWeightedARAP::add_soft_constraints(Eigen::SparseMatrix<double> &L,
-                                          Eigen::VectorXd &rhs) const
-{
-  for (int d = 0; d < d_.dim; d++)
-    for (auto const &x : d_.soft_cons)
-    {
-      int v_idx = x.first;
-      rhs(d * v_n + v_idx) += d_.soft_const_p * x.second(d); // rhs
-      L.coeffRef(d * v_n + v_idx, d * v_n + v_idx) +=
-          d_.soft_const_p; // diagonal of matrix
-    }
-}
-
-void ReWeightedARAP::mesh_improve()
-{
-  d_.mesh_improve(false);
-  after_mesh_improve();
-}
-
 void ReWeightedARAP::after_mesh_improve()
 {
   // differ to pre_calc in the sense of only updating scaffold ones
-  mv_n = d_.mv_num;
-  mf_n = d_.mf_num;
-  sv_n = d_.sv_num;
-  sf_n = d_.sf_num;
 
-  v_n = mv_n + sv_n;
-  f_n = mf_n + sf_n;
+  v_n = d_.mv_num + d_.sv_num;
+  f_n = d_.mf_num + d_.sf_num;
   if (d_.dim == 2)
   {
     compute_scaffold_gradient_matrix(Dx_s, Dy_s);
@@ -890,9 +390,9 @@ void ReWeightedARAP::after_mesh_improve()
     Eigen::SparseMatrix<double> Gs;
     igl::grad(d_.w_uv, d_.s_T, Gs);
 
-    Dx_s = Gs.block(0, 0, sf_n, v_n);
-    Dy_s = Gs.block(sf_n, 0, sf_n, v_n);
-    Dz_s = Gs.block(2 * sf_n, 0, sf_n, v_n);
+    Dx_s = Gs.block(0, 0, d_.sf_num, v_n);
+    Dy_s = Gs.block(d_.sf_num, 0, d_.sf_num, v_n);
+    Dz_s = Gs.block(2 * d_.sf_num, 0, d_.sf_num, v_n);
   }
   int dim = d_.dim;
 
@@ -904,10 +404,6 @@ void ReWeightedARAP::after_mesh_improve()
   W_s.resize(Dx_s.rows(), dim * dim);
 }
 
-void ReWeightedARAP::adjust_frame(double a, double b)
-{
-  d_.automatic_expand_frame(a, b);
-}
 
 void ReWeightedARAP::enlarge_internal_reference(double scale)
 {
