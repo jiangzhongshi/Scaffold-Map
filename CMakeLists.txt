@@ -66,19 +66,24 @@ target_link_libraries(scaffold_map PUBLIC igl::triangle igl::core igl::tetgen ig
 
 
 FILE(GLOB SRCFILES
-    "src/demo/*.cpp"
     "src/Newton/*.cpp")
 
 add_library(scaf_utils
     src/UI/DeformGUI.cpp
     src/UI/DeformGUI_key_press.cpp
     src/util/triangle_utils.cpp
+    src/demo/flow_demo.cpp
+    src/demo/parameterization_init.cpp
+    src/demo/tight_packing_demo.cpp
     src/util/tet_utils.cpp
     src/util/tetgenio_parser.cpp
     ${SRCFILES})
 
-add_executable(${PROJECT_NAME}_bin src/main.cpp)
-target_link_libraries(scaf_utils PUBLIC igl::png igl::triangle igl::tetgen igl::opengl_glfw igl::opengl_glfw_imgui)
-target_link_libraries(${PROJECT_NAME}_bin
-  igl::png scaffold_map scaf_utils CLI11::CLI11)
+add_executable(scaf_param_bin src/main.cpp)
+add_executable(scaf_flow_bin src/main_flow.cpp)
 
+target_link_libraries(scaf_utils PUBLIC igl::png igl::triangle igl::tetgen igl::opengl_glfw igl::opengl_glfw_imgui)
+target_link_libraries(scaf_param_bin
+  igl::png scaffold_map scaf_utils CLI11::CLI11)
+target_link_libraries(scaf_flow_bin
+  igl::png scaffold_map scaf_utils CLI11::CLI11 igl::tetgen)

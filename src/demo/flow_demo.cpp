@@ -19,7 +19,9 @@
 #include "../util/tetgenio_parser.h"
 
 #include "../util/tet_utils.h"
-void leg_flow_initializer(Eigen::MatrixXd &mTV,
+void flow_initializer(std::string filename,
+                      std::string target_file,
+    Eigen::MatrixXd &mTV,
                           Eigen::MatrixXi &mTT,
                           Eigen::MatrixXd &wTV,
                           Eigen::MatrixXi &sTT,
@@ -36,16 +38,18 @@ void leg_flow_initializer(Eigen::MatrixXd &mTV,
   igl::read_triangle_mesh("../models/nice_cube.obj", id_cube_V, cube_F);
 
   MatrixXi mTF;
-  if(true) {
-    igl::read_triangle_mesh("../models/Bunny/bunny.obj", mTV, mTT);
-    V_init = mTV;
-    surface_F = mTT;
-    mTV *= 30;
-  }
-  else {
-    igl::read_triangle_mesh("../models/leg-input.off", mTV, mTT);
-    igl::read_triangle_mesh("../models/Legs/flow6.off", V_init, surface_F);
-  }
+  igl::read_triangle_mesh(target_file, mTV, mTT);
+  igl::read_triangle_mesh(filename, V_init, surface_F);
+//  if(true) {
+//    igl::read_triangle_mesh("../models/Bunny/bunny.obj", mTV, mTT);
+//    V_init = mTV;
+//    surface_F = mTT;
+//    mTV *= 30;
+//  }
+//  else {
+//    igl::read_triangle_mesh("../models/leg-input.off", mTV, mTT);
+//    igl::read_triangle_mesh("../models/Legs/flow6.off", V_init, surface_F);
+//  }
   cube_V.resizeLike(id_cube_V);
   double max_V0 = V_init.maxCoeff();
   for (int i = 0; i < 3; i++)

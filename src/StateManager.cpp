@@ -60,18 +60,18 @@ SERIALIZE_MEMBER(surface_F)
 SERIALIZE_MEMBER(w_uv)
 )
 
-void leg_flow_initializer(Eigen::MatrixXd & mTV, Eigen::MatrixXi &mTT,
+void flow_initializer(std::string, std::string, Eigen::MatrixXd & mTV, Eigen::MatrixXi &mTT,
                          Eigen::MatrixXd &wTV, Eigen::MatrixXi &sTT,
                          Eigen::VectorXi& frame, Eigen::MatrixXi&surf_F, int&);
 
-void parameterization_init( std::string filename, Eigen::MatrixXd& V_ref,
+void parameterization_init(std::string filename, Eigen::MatrixXd& V_ref,
                             Eigen::MatrixXi &F_ref,
                            Eigen::MatrixXd& V_all, Eigen::MatrixXi &F_scaf,
                            Eigen::VectorXi &frame_id, Eigen::MatrixXi&disp_F);
 //void bars_stack_construction(ScafData& d_);
 
 void tight_packing_init(std::string, ScafData&);
-StateManager::StateManager(std::string filename, DemoType demo_type):
+StateManager::StateManager(DemoType demo_type, std::string filename, std::string target_file):
 model_file(filename),
 demo_type(demo_type),
 iter_count(0) {
@@ -97,7 +97,7 @@ iter_count(0) {
     case DemoType::FLOW:
     {
       int scaf_inner_tets = -1; 
-    leg_flow_initializer(V0,T0, V1, T1, frame, surf, scaf_inner_tets); 
+    flow_initializer(model_file, target_file, V0,T0, V1, T1, frame, surf, scaf_inner_tets);
     assert(scaf_inner_tets != -1); 
    
     this->scaf_data = ScafData(V0, T0, V1, T1); 

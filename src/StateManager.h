@@ -18,7 +18,7 @@ PACKING, FLOW, PARAM, BARS
 struct StateManager
 {
   StateManager(){} //empty constructor
-  StateManager(std::string filename, DemoType demo_type); //new from mesh_file
+  StateManager(DemoType demo_type, std::string filename, std::string target_file=""); //new from mesh_file
 
   friend std::ostream& operator<<(std::ostream& os, const StateManager& sm);
 
