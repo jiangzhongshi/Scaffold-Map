@@ -28,10 +28,13 @@ cmake -DCMAKE_BUILD_TYPE=Release ../
 make
 ```
 ### Running
+We provide three examples in this repo, parameterization of a camel, inflation of bunny, and self-intersection recovery of a leg.
 ```bash
-./scaffold-map_bin -t 2 -m ../camel_b.obj
+./scaf_param_bin -m ../camel_b.obj
+./scaf_flow_bin -m ../bunny.obj -t ../bunnyx30.obj
+./scaf_flow_bin -m ../leg-flow6.off -t ../models/leg-intersect.off
 ```
-Press `[space]` to perform one iteration. You can also try to drag it around!
+Press `[space]` to perform one iteration. 
 
 ## libigl version
 A simplified 2D version is integrated into libigl
