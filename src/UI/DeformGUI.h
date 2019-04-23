@@ -34,6 +34,7 @@ class DeformGUI {
                 const std::string png_file);
 
   bool extended_menu();
+  void show_box();
 
   void scaffold_coloring();
 

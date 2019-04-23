@@ -18,45 +18,6 @@
 #include <queue>
 #include <igl/Timer.h>
 
-void scaffold_interpolation(const Eigen::MatrixXd &w_uv,
-                            const Eigen::MatrixXi &w_F,
-                            const Eigen::MatrixXd &target_uv,
-                            const Eigen::VectorXi &out_bnd,
-                            const Eigen::VectorXi &inn_bnd,
-                            int harmonic_order,
-                            Eigen::MatrixXd &interp) {
-
-  using namespace Eigen;
-  if (true) {
-    VectorXi two_bnd(inn_bnd.size() + out_bnd.size());
-    two_bnd << inn_bnd, out_bnd;
-
-    MatrixXd bc_diff(two_bnd.size(), 2);
-    bc_diff.topRows(inn_bnd.size()) = igl::slice(target_uv, inn_bnd, 1)
-        - igl::slice(w_uv, inn_bnd, 1);
-    bc_diff.bottomRows(out_bnd.size()) = MatrixXd::Zero(out_bnd.size(), 2);
-
-    MatrixXd bc_coord = igl::slice(w_uv, two_bnd, 1) + bc_diff;
-
-    MatrixXd linterp, hinterp;
-//        igl::lscm(w_uv, w_F, two_bnd, bc_coord,linterp);
-//        interp = linterp;
-//        interp.col(0) = linterp.col(1);
-//        interp.col(1) = linterp.col(0);
-    if (harmonic_order == 0)
-      igl::harmonic(w_F, two_bnd, bc_coord, 1, hinterp);
-    else
-      igl::harmonic(w_uv, w_F, two_bnd, bc_coord, harmonic_order, hinterp);
-
-//        std::cout<<"hlscm:"<<(hinterp - linterp).norm()<<std::endl;
-    interp = hinterp;
-
-
-
-    //interp = w_uv + dinterp;
-    return;
-  }
-}
 
 #include "igl/remove_duplicates.h"
 void mesh_cat(const Eigen::MatrixXd &V1, const Eigen::MatrixXi &F1,
@@ -535,41 +496,6 @@ inline void adjusted_grad(const Eigen::MatrixBase<DerivedV> &V,
 //  std::cout<<"Adjusted"<<fixed<<std::endl;
 };
 
-template<typename DerivedV, typename DerivedF>
-inline void adjusted_local_basis(
-    const Eigen::MatrixBase<DerivedV> &V,
-    const Eigen::MatrixBase<DerivedF> &F,
-    Eigen::MatrixBase<DerivedV> &B1,
-    Eigen::MatrixBase<DerivedV> &B2,
-    Eigen::MatrixBase<DerivedV> &B3,
-    double eps) {
-  using namespace Eigen;
-  using namespace std;
-  B1.derived().resize(F.rows(), 3);
-  B2.derived().resize(F.rows(), 3);
-  B3.derived().resize(F.rows(), 3);
-
-  for (unsigned i = 0; i < F.rows(); ++i) {
-    Eigen::Matrix<typename DerivedV::Scalar, 1, 3>
-        v1 = (V.row(F(i, 1)) - V.row(F(i, 0))).normalized();
-    Eigen::Matrix<typename DerivedV::Scalar, 1, 3>
-        t = V.row(F(i, 2)) - V.row(F(i, 0));
-    Eigen::Matrix<typename DerivedV::Scalar, 1, 3>
-        v3 = v1.cross(t).normalized();
-    Eigen::Matrix<typename DerivedV::Scalar, 1, 3>
-        v2 = v1.cross(v3).normalized();
-
-    // if((bool)U(i)) {
-    //   v1 << 1, 0, 0;
-    //   v2 << 0, -1, 0;
-    //   v3 << 0, 0, 0;
-
-//    }
-    B1.row(i) = v1;
-    B2.row(i) = -v2;
-    B3.row(i) = v3;
-  }
-}
 void read_mesh_with_uv_seam(std::string filename,
                             Eigen::MatrixXd &out_V,
                             Eigen::MatrixXi &UV_F) {
@@ -605,14 +531,6 @@ void read_mesh_with_uv_seam(std::string filename,
 }
 
 // Explicit Instantiations.
-template void adjusted_local_basis<Eigen::Matrix<double, -1, -1, 0, -1, -1>,
-                                   Eigen::Matrix<int, -1, -1, 0, -1, -1> >
-    (Eigen::MatrixBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &,
-     Eigen::MatrixBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const &,
-     Eigen::MatrixBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &,
-     Eigen::MatrixBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &,
-     Eigen::MatrixBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &, double);
-
 template void adjusted_grad<Eigen::Matrix<double, -1, -1, 0, -1, -1>,
                             Eigen::Matrix<int, -1, -1, 0, -1, -1> >
     (Eigen::MatrixBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &,

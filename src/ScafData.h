@@ -7,19 +7,21 @@
 
 #include <Eigen/Dense>
 #include <map>
+#include <igl/MappingEnergyType.h>
 #include <vector>
 
 struct ScafData {
   // dimension for domain of parameterization/deformation
  public:
   ScafData();
-//    ScafData(Eigen::MatrixXd &V, Eigen::MatrixXi &F, int mv_n, int mf_n);;
   ScafData(Eigen::MatrixXd &mesh_V, Eigen::MatrixXi &mesh_F,
            Eigen::MatrixXd &all_V, Eigen::MatrixXi &scaf_T);
   void add_new_patch(const Eigen::MatrixXd&, const Eigen::MatrixXi&,
                      const Eigen::RowVectorXd &center);
 
-  void mesh_improve(bool);
+  void mesh_improve(bool square_frame=false, bool expand_frame=true);
+  void mesh_improve_3d(bool expand_frame);
+
   void automatic_expand_frame(double min=2.0, double max = 3.0);
 
   void add_soft_constraints(int b,
@@ -27,30 +29,15 @@ struct ScafData {
   void add_soft_constraints(const Eigen::VectorXi &b,
                             const Eigen::MatrixXd &bc);
   void update_scaffold();
+  void set_scaffold_factor(double weight);
 
   double scaffold_factor = 10;
 
-  enum SLIM_ENERGY
-  {
-    ARAP,
-    LOG_ARAP,
-    SYMMETRIC_DIRICHLET,
-    CONFORMAL,
-    EXP_CONFORMAL,
-    EXP_SYMMETRIC_DIRICHLET
-  };
+  typedef igl::MappingEnergyType SLIM_ENERGY;
 
   SLIM_ENERGY slim_energy = SLIM_ENERGY::SYMMETRIC_DIRICHLET;
 
-  enum class SCAF_ENERGY {
-    SYMMETRIC_DIRICHLET,
-    CONFORMAL,
-    ARAP,
-    LOG_ARAP,
-    EXP_CONFORMAL,
-    EXP_SYMMETRIC_DIRICHLET
-  };
-  SLIM_ENERGY scaf_energy = SYMMETRIC_DIRICHLET;
+  SLIM_ENERGY scaf_energy = SLIM_ENERGY::SYMMETRIC_DIRICHLET;
 
 // Optional Input
 

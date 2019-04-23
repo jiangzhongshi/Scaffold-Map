@@ -198,26 +198,26 @@ inline void combined_improvement_pass(
       }
 
       // multi_face pass
-//      if (igl::dev::tet_tuple_multi_face_removal(tid,
-//                                                 f,
-//                                                 0,
-//                                                 true,
-//                                                 tet_quality,
-//                                                 orient3D,
-//                                                 T,
-//                                                 TT,
-//                                                 TTif,
-//                                                 TTie,
-//                                                 new_tets_id)) {
+      if (igl::dev::tet_tuple_multi_face_removal(tid,
+                                                 f,
+                                                 0,
+                                                 true,
+                                                 tet_quality,
+                                                 orient3D,
+                                                 T,
+                                                 TT,
+                                                 TTif,
+                                                 TTie,
+                                                 new_tets_id)) {
 //         put back to heap with additional stamp.
-//        tet_time_stamps.resize(T.size(), -1);
-//        for (auto tt:new_tets_id)
-//          tet_qual_heap.emplace_back(-tet_quality(T[tt][0], T[tt][1],
-//                                                  T[tt][2], T[tt][3]),
-//                                     tt, ++tet_time_stamps[tt]);
-//        improved_flag = true;
-//        break;
-//      }
+        tet_time_stamps.resize(T.size(), -1);
+        for (auto tt:new_tets_id)
+          tet_qual_heap.emplace_back(-tet_quality(T[tt][0], T[tt][1],
+                                                  T[tt][2], T[tt][3]),
+                                     tt, ++tet_time_stamps[tt]);
+        improved_flag = true;
+        break;
+      }
 
       // edge removal/contraction/split pass
       if(f!= 0)  // all selected face are attached to v0.

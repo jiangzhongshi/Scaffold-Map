@@ -53,6 +53,7 @@ void ReWeightedARAP::solve_weighted_arap(Eigen::MatrixXd &uv)
   using namespace Eigen;
   using namespace std;
   int dim = d_.dim;
+  auto v_n = d_.v_num;
   igl::Timer timer;
   timer.start();
 
@@ -207,20 +208,12 @@ void ReWeightedARAP::build_surface_linear_system(Eigen::SparseMatrix<double> &L,
   // to get the  complete A
   Eigen::VectorXd sqrtM = d_.m_M.array().sqrt();
   Eigen::SparseMatrix<double> A(dim * dim * f_n, dim * v_n);
-  auto decoy_Dx_m = Dx_m;
-  decoy_Dx_m.conservativeResize(W_m.rows(), v_n);
-  auto decoy_Dy_m = Dy_m;
-  decoy_Dy_m.conservativeResize(W_m.rows(), v_n);
-  if (dim == 2)
-  {
-    buildAm(sqrtM, decoy_Dx_m, decoy_Dy_m, W_m, A);
-  }
-  else
-  {
-    auto decoy_Dz_m = Dz_m;
-    decoy_Dz_m.conservativeResize(W_m.rows(), v_n);
-    buildAm(sqrtM, decoy_Dx_m, decoy_Dy_m, decoy_Dz_m, W_m, A);
-  }
+
+  auto decoy_Dx_m = Dx_m; decoy_Dx_m.conservativeResize(W_m.rows(), v_n);
+  auto decoy_Dy_m = Dy_m; decoy_Dy_m.conservativeResize(W_m.rows(), v_n);
+  auto decoy_Dz_m = Dz_m;
+  if (dim == 3) decoy_Dz_m.conservativeResize(W_m.rows(), v_n);
+  buildAm(sqrtM, decoy_Dx_m, decoy_Dy_m, decoy_Dz_m, W_m, A);
 
   Eigen::SparseMatrix<double> At = A.transpose();
   At.makeCompressed();
@@ -260,10 +253,7 @@ void ReWeightedARAP::build_scaffold_linear_system(Eigen::SparseMatrix<double>
 
   Eigen::VectorXd sqrtM = d_.s_M.array().sqrt();
   Eigen::SparseMatrix<double> A(dim * dim * f_n, dim * v_n);
-  if (dim == 2)
-    buildAm(sqrtM, Dx_s, Dy_s, W_s, A);
-  else
-    buildAm(sqrtM, Dx_s, Dy_s, Dz_s, W_s, A);
+  buildAm(sqrtM, Dx_s, Dy_s, Dz_s, W_s, A);
 
   const VectorXi &bnd_ids = d_.frame_ids;
 
@@ -365,212 +355,23 @@ void ReWeightedARAP::build_scaffold_linear_system(Eigen::SparseMatrix<double>
 void ReWeightedARAP::buildAm(const Eigen::VectorXd &sqrt_M,
                              const Eigen::SparseMatrix<double> &Dx,
                              const Eigen::SparseMatrix<double> &Dy,
-                             const Eigen::MatrixXd &W,
-                             Eigen::SparseMatrix<double> &Am)
-{
-  using namespace Eigen;
-  // formula (35) in paper
-  std::vector<Triplet<double>> IJV;
-  const int f_n = W.rows();
-  const int v_n = Dx.cols();
-
-  IJV.reserve(4 * (Dx.outerSize() + Dy.outerSize()));
-
-  /*A = [W11*Dx, W12*Dx;
-       W11*Dy, W12*Dy;
-       W21*Dx, W22*Dx;
-       W21*Dy, W22*Dy];*/
-  for (int k = 0; k < Dx.outerSize(); ++k)
-  {
-    for (SparseMatrix<double>::InnerIterator it(Dx, k); it; ++it)
-    {
-      int dx_r = it.row();
-      int dx_c = it.col();
-      double val = it.value() * sqrt_M(dx_r);
-
-      IJV.push_back(Triplet<double>(dx_r, dx_c, val * W(dx_r, 0)));
-      IJV.push_back(Triplet<double>(dx_r, v_n + dx_c, val * W(dx_r, 1)));
-
-      IJV.push_back(Triplet<double>(2 * f_n + dx_r, dx_c, val * W(dx_r, 2)));
-      IJV.push_back(
-          Triplet<double>(2 * f_n + dx_r, v_n + dx_c, val * W(dx_r, 3)));
-    }
-  }
-
-  for (int k = 0; k < Dy.outerSize(); ++k)
-  {
-    for (SparseMatrix<double>::InnerIterator it(Dy, k); it; ++it)
-    {
-      int dy_r = it.row();
-      int dy_c = it.col();
-      double val = it.value() * sqrt_M(dy_r);
-
-      IJV.push_back(Triplet<double>(f_n + dy_r, dy_c,
-                                    val * W(dy_r, 0)));
-      IJV.push_back(Triplet<double>(f_n + dy_r, v_n + dy_c,
-                                    val * W(dy_r, 1)));
-
-      IJV.push_back(Triplet<double>(3 * f_n + dy_r, dy_c,
-                                    val * W(dy_r, 2)));
-      IJV.push_back(Triplet<double>(3 * f_n + dy_r, v_n + dy_c,
-                                    val * W(dy_r, 3)));
-    }
-  }
-  Am.setFromTriplets(IJV.begin(), IJV.end());
-}
-
-void ReWeightedARAP::buildAm(const Eigen::VectorXd &sqrt_M,
-                             const Eigen::SparseMatrix<double> &Dx,
-                             const Eigen::SparseMatrix<double> &Dy,
                              const Eigen::SparseMatrix<double> &Dz,
                              const Eigen::MatrixXd &W,
                              Eigen::SparseMatrix<double> &Am)
 {
-  using namespace Eigen;
-  // formula (35) in paper
-  std::vector<Triplet<double>> IJV;
-  IJV.reserve(9 * (Dx.outerSize() + Dy.outerSize() + Dz.outerSize()));
+  std::vector<Eigen::Triplet<double>> IJV;
 
-  const int f_n = W.rows();
-  const int v_n = Dx.cols();
+  Eigen::SparseMatrix<double> MDx = sqrt_M.asDiagonal() * Dx;
+  Eigen::SparseMatrix<double> MDy = sqrt_M.asDiagonal() * Dy;
 
-  /*A = [W11*Dx, W12*Dx, W13*Dx;
-         W11*Dy, W12*Dy, W13*Dy;
-         W11*Dz, W12*Dz, W13*Dz;
-         W21*Dx, W22*Dx, W23*Dx;
-         W21*Dy, W22*Dy, W23*Dy;
-         W21*Dz, W22*Dz, W23*Dz;
-         W31*Dx, W32*Dx, W33*Dx;
-         W31*Dy, W32*Dy, W33*Dy;
-         W31*Dz, W32*Dz, W33*Dz;];*/
-  for (int k = 0; k < Dx.outerSize(); k++)
-  {
-    for (Eigen::SparseMatrix<double>::InnerIterator it(Dx, k); it; ++it)
-    {
-      int dx_r = it.row();
-      int dx_c = it.col();
-      double val = it.value();
+  Eigen::SparseMatrix<double> MDz;
+  if (Dz.rows() != 0) MDz = sqrt_M.asDiagonal() * Dz;
 
-      double m_0 = sqrt_M(dx_r);
-      double m_3 = sqrt_M(dx_r);
-      double m_6 = sqrt_M(dx_r);
-      IJV.push_back(Eigen::Triplet<double>(dx_r, dx_c, m_0 * val * W(dx_r, 0)));
-      IJV.push_back(Eigen::Triplet<double>(dx_r,
-                                           v_n + dx_c,
-                                           m_0 * val * W(dx_r, 1)));
-      IJV.push_back(Eigen::Triplet<double>(dx_r,
-                                           2 * v_n + dx_c,
-                                           m_0 * val * W(dx_r, 2)));
-
-      IJV.push_back(Eigen::Triplet<double>(3 * f_n + dx_r,
-                                           dx_c,
-                                           m_3 * val * W(dx_r, 3)));
-      IJV.push_back(Eigen::Triplet<double>(3 * f_n + dx_r,
-                                           v_n + dx_c,
-                                           m_3 * val * W(dx_r, 4)));
-      IJV.push_back(Eigen::Triplet<double>(3 * f_n + dx_r,
-                                           2 * v_n + dx_c,
-                                           m_3 * val * W(dx_r, 5)));
-
-      IJV.push_back(Eigen::Triplet<double>(6 * f_n + dx_r,
-                                           dx_c,
-                                           m_6 * val * W(dx_r, 6)));
-      IJV.push_back(Eigen::Triplet<double>(6 * f_n + dx_r,
-                                           v_n + dx_c,
-                                           m_6 * val * W(dx_r, 7)));
-      IJV.push_back(Eigen::Triplet<double>(6 * f_n + dx_r,
-                                           2 * v_n + dx_c,
-                                           m_6 * val * W(dx_r, 8)));
-    }
-  }
-
-  for (int k = 0; k < Dy.outerSize(); k++)
-  {
-    for (Eigen::SparseMatrix<double>::InnerIterator it(Dy, k); it; ++it)
-    {
-      int dy_r = it.row();
-      int dy_c = it.col();
-      double val = it.value();
-
-      double m_1 = sqrt_M(dy_r);
-      double m_4 = sqrt_M(dy_r);
-      double m_7 = sqrt_M(dy_r);
-      IJV.push_back(Eigen::Triplet<double>(f_n + dy_r,
-                                           dy_c,
-                                           m_1 * val * W(dy_r, 0)));
-      IJV.push_back(Eigen::Triplet<double>(f_n + dy_r,
-                                           v_n + dy_c,
-                                           m_1 * val * W(dy_r, 1)));
-      IJV.push_back(Eigen::Triplet<double>(f_n + dy_r,
-                                           2 * v_n + dy_c,
-                                           m_1 * val * W(dy_r, 2)));
-
-      IJV.push_back(Eigen::Triplet<double>(4 * f_n + dy_r,
-                                           dy_c,
-                                           m_4 * val * W(dy_r, 3)));
-      IJV.push_back(Eigen::Triplet<double>(4 * f_n + dy_r,
-                                           v_n + dy_c,
-                                           m_4 * val * W(dy_r, 4)));
-      IJV.push_back(Eigen::Triplet<double>(4 * f_n + dy_r,
-                                           2 * v_n + dy_c,
-                                           m_4 * val * W(dy_r, 5)));
-
-      IJV.push_back(Eigen::Triplet<double>(7 * f_n + dy_r,
-                                           dy_c,
-                                           m_7 * val * W(dy_r, 6)));
-      IJV.push_back(Eigen::Triplet<double>(7 * f_n + dy_r,
-                                           v_n + dy_c,
-                                           m_7 * val * W(dy_r, 7)));
-      IJV.push_back(Eigen::Triplet<double>(7 * f_n + dy_r,
-                                           2 * v_n + dy_c,
-                                           m_7 * val * W(dy_r, 8)));
-    }
-  }
-
-  for (int k = 0; k < Dz.outerSize(); k++)
-  {
-    for (Eigen::SparseMatrix<double>::InnerIterator it(Dz, k); it; ++it)
-    {
-      int dz_r = it.row();
-      int dz_c = it.col();
-      double val = it.value();
-      double m_2 = sqrt_M(dz_r);
-      double m_5 = sqrt_M(dz_r);
-      double m_8 = sqrt_M(dz_r);
-      IJV.push_back(Eigen::Triplet<double>(2 * f_n + dz_r,
-                                           dz_c,
-                                           m_2 * val * W(dz_r, 0)));
-      IJV.push_back(Eigen::Triplet<double>(2 * f_n + dz_r,
-                                           v_n + dz_c,
-                                           m_2 * val * W(dz_r, 1)));
-      IJV.push_back(Eigen::Triplet<double>(2 * f_n + dz_r,
-                                           2 * v_n + dz_c,
-                                           m_2 * val * W(dz_r, 2)));
-
-      IJV.push_back(Eigen::Triplet<double>(5 * f_n + dz_r,
-                                           dz_c,
-                                           m_5 * val * W(dz_r, 3)));
-      IJV.push_back(Eigen::Triplet<double>(5 * f_n + dz_r,
-                                           v_n + dz_c,
-                                           m_5 * val * W(dz_r, 4)));
-      IJV.push_back(Eigen::Triplet<double>(5 * f_n + dz_r,
-                                           2 * v_n + dz_c,
-                                           m_5 * val * W(dz_r, 5)));
-
-      IJV.push_back(Eigen::Triplet<double>(8 * f_n + dz_r,
-                                           dz_c,
-                                           m_8 * val * W(dz_r, 6)));
-      IJV.push_back(Eigen::Triplet<double>(8 * f_n + dz_r,
-                                           v_n + dz_c,
-                                           m_8 * val * W(dz_r, 7)));
-      IJV.push_back(Eigen::Triplet<double>(8 * f_n + dz_r,
-                                           2 * v_n + dz_c,
-                                           m_8 * val * W(dz_r, 8)));
-    }
-  }
+  igl::slim_buildA(MDx, MDy, MDz, W, IJV);
 
   Am.setFromTriplets(IJV.begin(), IJV.end());
-}
+  Am.makeCompressed();
+ }
 
 void ReWeightedARAP::buildRhs(const Eigen::VectorXd &sqrt_M,
                               const Eigen::MatrixXd &W,

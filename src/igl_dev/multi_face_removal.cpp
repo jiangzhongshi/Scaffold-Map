@@ -175,10 +175,10 @@ bool tet_tuple_multi_face_removal(int ti,
   }
   if (q_new <= q_old)
     return false;
-//  if (q_new < 0) {
+  if (q_new < 0) {
 //    std::cout<<"Warning q_new < 0 in Multiface removal"<<std::endl;
-//    return false;
-//  }
+    return false;
+  }
   // delete those sandwiched between a/b
   std::set<int> delete_tets;
   std::set<int> influence_id;
