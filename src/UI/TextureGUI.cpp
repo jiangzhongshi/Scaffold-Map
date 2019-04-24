@@ -43,9 +43,7 @@ s_(state), d_(state.scaf_data) {
   v_.callback_post_draw = [this](igl_viewer&) {
     return this->post_draw();
   };
-  v_.callback_init = [this](igl_viewer&) {
-    return this->extended_menu();
-  };
+  extended_menu();
   v_.callback_key_pressed = [this](igl_viewer&, auto a, auto b) {
     return this->key_pressed(a);
   };
@@ -149,9 +147,10 @@ void TextureGUI::scaffold_coloring() {
   auto& face_sizes = d_.component_sizes;
 //  Eigen::VectorXi face_sizes(12);
 //  face_sizes<< 90, 73,801, 73,222,478,224,272, 40, 198, 167,185;
-  for(int i=0, cur_color = 0; i<12; i++) {
+  int num_comp = d_.component_sizes.size();
+  for(int i=0, cur_color = 0; i<num_comp; i++) {
     int cur_size = face_sizes[i];
-    rgb ci = hsv2rgb({i*360/12.,saturation,bright_val});
+    rgb ci = hsv2rgb({i*360./num_comp,saturation,bright_val});
     mesh_color_.middleRows(cur_color, cur_size) = Eigen::RowVector3d(ci.r,ci.g,
                                                                   ci.b)
         .replicate(cur_size,1);
@@ -165,7 +164,7 @@ void TextureGUI::scaffold_coloring() {
     v_.data().add_points(vert0, Eigen::RowVector3d(1, 0, 0));
     v_.data().add_points(x.second, Eigen::RowVector3d(0, 0, 1));
     v_.data().dirty |= igl::opengl::MeshGL::DIRTY_OVERLAY_POINTS;
-//    v_.data().dirty |= v_.data().DIRTY_OVERLAY_LINES;
+    v_.data().dirty |= igl::opengl::MeshGL::DIRTY_OVERLAY_LINES;
   }
 
   v_.data().set_colors(mesh_color_);
@@ -261,7 +260,7 @@ bool TextureGUI::key_pressed(unsigned int key) {
             t.join();
         threads_.clear();
       }
-      {double sc = reference_scaling_ + 1;
+      {float sc = reference_scaling_ + 1;
       double change_factor =  sc/ reference_scaling_;
       s_.ws_solver->enlarge_internal_reference(change_factor);
       reference_scaling_= sc;
@@ -361,10 +360,10 @@ bool TextureGUI::computation_for_png_dumping() {
 
 
     auto iteration_out = d_.w_uv;
-  if(true) {
+  if(!s_.use_newton) {
     double new_weight = d_.mesh_measure * (last_mesh_energy-4)
         / (d_.sf_num*100);
-    ws->adjust_scaf_weight(new_weight);
+    d_.set_scaffold_factor(new_weight);
     d_.energy = ws->perform_iteration(iteration_out);
   } else {
     SchaeferNewtonParametrizer snp(d_);
@@ -421,7 +420,6 @@ bool TextureGUI::background_computation() {
 
     timer.start();
 
-
     s_.iter_count ++; // separate here for threading.
 
     if(s_.optimize_scaffold){
@@ -429,15 +427,17 @@ bool TextureGUI::background_computation() {
       bool auto_expand = false;
       if(auto_expand)
         d_.rect_frame_V.resize(0,0);
-      d_.mesh_improve();
+      d_.mesh_improve(true, //square frame
+                      false //expand frame
+                  );
      }
     ws->after_mesh_improve();
 
 
-    if (auto_weighting_) {
+    if (s_.auto_weight) {
       double new_weight = d_.mesh_measure * (last_mesh_energy - 4)
           / (100 * d_.sf_num);
-      ws->adjust_scaf_weight(new_weight);
+      d_.set_scaffold_factor(new_weight);
       std::cout<<"ScafWeight:"<<d_.scaffold_factor<<std::endl;
     }
 

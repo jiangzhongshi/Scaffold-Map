@@ -58,7 +58,7 @@ bool DeformGUI::key_press(unsigned int key, int mod) {
   static double accumulated_time = 0;
   if (key == ' ') {   /// Iterates.
 
-    for (int i = 0; i < inner_iters; i++) {
+    for (int i = 0; i < s_.	inner_iters; i++) {
       std::cout << "=============" << std::endl;
       std::cout << "Iteration:" << s_.iter_count++ << '\t';
       igl::Timer timer;
@@ -66,16 +66,16 @@ bool DeformGUI::key_press(unsigned int key, int mod) {
       timer.start();
       if(s_.optimize_scaffold) {
         d_.mesh_improve(use_square_frame, adjust_frame);
-        if(!use_newton) ws_solver->after_mesh_improve();
+        if(!s_.use_newton) ws_solver->after_mesh_improve();
       } else {
         d_.automatic_expand_frame(2,3);
         ws_solver->after_mesh_improve();
       }
-      if(auto_weight)
+      if(s_.auto_weight)
          d_.set_scaffold_factor(
           (last_mesh_energy)*sd.mesh_measure /(sd.sf_num) / 100.0);
 
-      if(!use_newton) {
+      if(!s_.use_newton) {
         sd.energy = ws_solver->perform_iteration(sd.w_uv);
       } else {
         // no precomputation.

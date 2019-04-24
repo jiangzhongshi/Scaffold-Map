@@ -14,6 +14,8 @@
 #define ENABLE_SERIALIZATION
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/opengl/ViewerCore.h>
+#include <igl/opengl/glfw/imgui/ImGuiMenu.h>
+#include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
 
 class StateManager;
 class ScafData;
@@ -41,7 +43,8 @@ class TextureGUI {
   ScafData &d_;
   StateManager &s_;
   igl::opengl::glfw::Viewer v_;
-  double reference_scaling_ = 1;
+  igl::opengl::glfw::imgui::ImGuiMenu menu_;
+  float reference_scaling_ = 1;
 
   // coloring and display.
   Eigen::MatrixXd mesh_color_;
@@ -51,7 +54,7 @@ class TextureGUI {
   igl::opengl::ViewerCore viewer_core_3d_;
   igl::opengl::ViewerCore viewer_core_2d_;
   bool viewer_cores_init = false;
-  double uv_scale = 1.;
+  float uv_scale = 1.;
   void scaffold_coloring();
   void show_uv_seam(bool uv_space);
 
@@ -77,9 +80,6 @@ class TextureGUI {
 //  bool placing_new_patch = false;
   Eigen::MatrixXd cache_new_patch_V;
   Eigen::MatrixXi cache_new_patch_F;
-
-  // parameters
-  bool auto_weighting_ = true;
 
   // control
   bool continue_computing_ = false;

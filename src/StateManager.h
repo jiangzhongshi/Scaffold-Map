@@ -39,6 +39,9 @@ struct StateManager
   bool predict_reference = false;
   bool fix_reference = false;
 
+  int inner_iters = 1;
+  bool use_newton = false;
+  bool auto_weight = true;
   //display
 
 };

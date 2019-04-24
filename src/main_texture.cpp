@@ -1,6 +1,6 @@
 #include "ReWeightedARAP.h"
 #include "StateManager.h"
-#include "UI/DeformGUI.h"
+#include "UI/TextureGUI.h"
 #include "util/triangle_utils.h"
 #include <igl/Timer.h>
 #include <igl/opengl/glfw/Viewer.h>
@@ -9,12 +9,10 @@
 #include <CLI/CLI.hpp>
 
 int main(int argc, char* argv[]) {
-  CLI::App command_line{"Scaffold Mapping: Flow Example"};
+  CLI::App command_line{"Scaffold Mapping: Parameterization"};
   std::string filename = "";
-  std::string target_file;
-  int demo_type = 1;
+  filename = "/Users/zhongshi/Workspace/Scaffold-Map/camel_b.obj";
   command_line.add_option("-m,--mesh", filename, "Mesh path")->check(CLI::ExistingFile);
-  command_line.add_option("-t,--target", target_file, "target file")->check(CLI::ExistingFile);
   bool show_gui = true;
   command_line.add_option("-g,--gui", show_gui, "Show GUI");
   try {
@@ -23,17 +21,9 @@ int main(int argc, char* argv[]) {
       return command_line.exit(e);
   }
 
-  StateManager s_(static_cast<DemoType>(demo_type), filename, target_file);
-    igl::opengl::glfw::Viewer v;
+  StateManager s_(DemoType::PACKING, filename);
 
-    DeformGUI gui(v, s_);
-    if (show_gui)
-        v.launch();
-    else {
-        while (s_.iter_count < 50) {
-            gui.key_press(' ', 0);
-        }
-    }
-
+TextureGUI gui(s_);
+gui.launch();
   return 0;
 }

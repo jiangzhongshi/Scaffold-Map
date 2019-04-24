@@ -7,8 +7,6 @@
 #include "../StateManager.h"
 
 #include <vector>
-// #include <nanogui/formhelper.h>
-// #include <nanogui/slider.h>
 
 #include <igl/unproject_onto_mesh.h>
 #include <igl/unproject.h>
@@ -23,16 +21,53 @@
 #include <igl/slice.h>
 
 bool TextureGUI::extended_menu() {
-//   using namespace Eigen;
-//   using namespace std;
+   using namespace Eigen;
+   using namespace std;
 
-//   auto& ws_solver = s_.ws_solver;
-//   bool &reg_scaf = s_.optimize_scaffold;
-//   int &iteration_count = s_.iter_count;
+   v_.plugins.push_back(&menu_);
 
-//   v_.ngui->addGroup("Scaffold Info");
+   menu_.callback_draw_viewer_menu = [&]() {
+       menu_.draw_viewer_menu();
+//     Add widgets to the sidebar.
+   if (ImGui::CollapsingHeader("Scaffold Info", ImGuiTreeNodeFlags_DefaultOpen))
+   {
+       ImGui::Text("iteration count %d", s_.iter_count);
+       ImGui::Text("V %ld F %ld", d_.mv_num, d_.mf_num);
+       ImGui::Text("Scaf V %ld F %ld T %ld", d_.sv_num, d_.sf_num, d_.s_T.rows());
+   }
+   if (ImGui::CollapsingHeader("Serialization", ImGuiTreeNodeFlags_DefaultOpen))
+   {
+       if (ImGui::Button("Save")) s_.save(igl::file_dialog_save());
+       if (ImGui::Button("Load")) {
+           std::string ser_file = igl::file_dialog_open();
+           if(ser_file.empty()) return;
+           s_.load(ser_file);
 
-//   v_.ngui->addVariable("It", iteration_count, false);
+           VectorXi b(d_.soft_cons.size());
+           MatrixXd bc(b.rows(), 3);
+           int i = 0;
+           for (auto const &x: d_.soft_cons) {
+             b(i) = x.first;
+             bc.row(i) = x.second;
+             i++;
+           }
+
+           MatrixXd m_uv = d_.w_uv.topRows(d_.mv_num);
+
+           // refresh after load
+           v_.data().clear();
+           v_.data().set_mesh(d_.w_uv, d_.surface_F);
+           scaffold_coloring();
+       }
+       if (ImGui::Button("SaveUV")) {
+            Eigen::MatrixXd w_uv3 = Eigen::MatrixXd::Zero(d_.w_uv.rows(),3);
+            w_uv3.leftCols(2) = d_.w_uv;
+            igl::writeOBJ(igl::file_dialog_save(),w_uv3, d_.surface_F);
+       }
+
+       } // Serialization
+   };
+
 
 //   v_.ngui->addGroup("Serialization");
 //   v_.ngui->addButton("Save", [&]() {
@@ -73,6 +108,100 @@ bool TextureGUI::extended_menu() {
 //     v_.ngui->refresh();
 //   });
 
+
+   menu_.callback_draw_custom_window = [&]()
+   {
+     // Define next window position + size
+     ImGui::SetNextWindowPos(ImVec2(1000.f * menu_.menu_scaling(), 10), ImGuiSetCond_FirstUseEver);
+     ImGui::SetNextWindowSize(ImVec2(200, 260), ImGuiSetCond_FirstUseEver);
+     ImGui::Begin(
+   "Scaffold Tweak", nullptr,
+   ImGuiWindowFlags_NoSavedSettings
+     );
+
+
+   ImGui::Checkbox("Remesh", &s_.optimize_scaffold);
+   ImGui::InputInt("It Per []", &s_.inner_iters);
+   ImGui::Checkbox("Use Newton", &s_.use_newton);
+   ImGui::Checkbox("Auto Weight", &s_.auto_weight);
+
+   double val = d_.scaffold_factor;
+   if (ImGui::InputDouble("Scaf Weight",&val)) {
+       d_.set_scaffold_factor(val);
+        std::cout << "Weight:" << val << std::endl;
+   }
+   if (ImGui::Button("Clear Constraints")) {
+     d_.soft_cons.clear();
+     scaffold_coloring();
+   }
+   if (ImGui::Button("SnapShot")) {
+    render_to_png(2*1600, 2*900,
+                  igl::file_dialog_save
+                      ());
+   }
+   if (ImGui::Checkbox("uv space", &uv_space))
+   {
+        re_draw_ = true;
+        if (viewer_cores_init) {
+          if (!uv_space) {
+            viewer_core_2d_ = v_.core;
+            v_.core = viewer_core_3d_;
+          } else {
+            viewer_core_3d_ = v_.core;
+            v_.core = viewer_core_2d_;
+          }
+        }
+        if (continue_computing_) {
+              continue_computing_ = false;
+              for (auto &t:threads_)
+                if (t.joinable())
+                  t.join();
+              threads_.clear();
+        }
+   }
+   if (!uv_space)
+         if(ImGui::SliderFloat("uv size", &uv_scale, 0.0f, 10.0f, "ratio = %.3f")) re_draw_ = true;
+
+   ImGui::Text("Current Picked Patch %d", picked_component);
+
+   float current_scaling = reference_scaling_;
+   if(ImGui::SliderFloat("Reference Scaling", &current_scaling, 0.1f, 10.0f, "ratio = %.3f")){
+           // wait for computation to be done.
+           if (continue_computing_) {
+             continue_computing_ = false;
+             for (auto &t:threads_)
+               if (t.joinable())
+                 t.join();
+             threads_.clear();
+           }
+       // then adjust ws->Dx, Dy by a factor of.
+           float change_factor = current_scaling / reference_scaling_;
+           s_.ws_solver->enlarge_internal_reference(
+                       static_cast<double>(change_factor));
+           reference_scaling_ = current_scaling;
+   }
+
+   if(ImGui::Button("Add Patch")) {
+       if(!igl::read_triangle_mesh(igl::file_dialog_open(),
+                                    cache_new_patch_V,cache_new_patch_F)) {
+          std::cerr<<"Cannot open mesh!"<<std::endl;
+          return;
+        }
+        continue_computing_ = false;
+        for(auto&t:threads_)
+          if(t.joinable())
+            t.join();
+        threads_.clear();
+        mouse_click_mode = ClickMode::PLACE_PATCH;
+   }
+   if(ImGui::Button("Choose Patch")) {
+            continue_computing_ = false;
+            for(auto&t:threads_)
+              if(t.joinable())
+                t.join();
+            threads_.clear();
+            mouse_click_mode = ClickMode::CHOOSE_PATCH;
+   }
 //   v_.ngui->addButton("SaveToOBJ", [&]() {
 //     Eigen::MatrixXd w_uv3 = Eigen::MatrixXd::Zero(d_.w_uv.rows(),3);
 //     w_uv3.leftCols(d_.w_uv.cols()) = d_.w_uv;
@@ -101,90 +230,13 @@ bool TextureGUI::extended_menu() {
 
 //   });
 //   v_.ngui->addVariable("ClickMode", mouse_click_mode, true)
-//     ->setItems({"Choose", "Move", "Dragging","None"});
-
-//   // Add an additional menu window
-//   v_.ngui->addWindow(Eigen::Vector2i(1600 - 220, 10),
-//                      "Scaffold Tweak");
-//   v_.ngui->addVariable<bool>("ReMesh", [&reg_scaf](bool val) {
-//     reg_scaf = val; // set
-//   }, [&reg_scaf]() {
-//     return reg_scaf; // get
-//   });
-//   v_.ngui->addVariable("AutoWeight", auto_weighting_);
-//   v_.ngui->addVariable<float>("Scaf Weight",
-//                               [&ws_solver](float val) {
-//                                 ws_solver->adjust_scaf_weight(val);
-//                                 std::cout << "Weight:" << val
-//                                           << std::endl;
-//                               },
-//                               [this]() {
-//                                 return d_.scaffold_factor;
-//                               });
-
-//   v_.ngui->addVariable<bool>("UV Space", [this](bool val) {
-//     this->uv_space = val;
-//     re_draw_ = true;
-//     if (viewer_cores_init) {
-//       if (!uv_space) {
-//         viewer_core_2d_ = v_.core;
-//         v_.core = viewer_core_3d_;
-//       } else {
-//         viewer_core_3d_ = v_.core;
-//         v_.core = viewer_core_2d_;
-//       }
-//     }
-
-//     if (continue_computing_) {
-//       continue_computing_ = false;
-//       for (auto &t:threads_)
-//         if (t.joinable())
-//           t.join();
-//       threads_.clear();
-//     }
-//   }, [this](){return this->uv_space;});
-
-//   v_.ngui->addVariable<float>("UV size", [this](float val) {
-//     this->uv_scale = val;
-//     re_draw_ = true;
-//   }, [this](){return this->uv_scale;});
-
-//   v_.ngui->addVariable("Current Patch", picked_component);
-//   v_.ngui->addVariable<double>("Scaling", [this](double sc) {
-// //    if (picked_component == -1) return; //nonsense
-//     // wait for computation to be done.
-//     if (continue_computing_) {
-//       continue_computing_ = false;
-//       for (auto &t:threads_)
-//         if (t.joinable())
-//           t.join();
-//       threads_.clear();
-//     }
-// // then adjust ws->Dx, Dy by a factor of.
-//     double change_factor = sc / reference_scaling_;
-//     s_.ws_solver->enlarge_internal_reference(change_factor);
-
-// // then assign to the current scaling.
-//      reference_scaling_= sc;
-//   }, [this]() {
-//     return reference_scaling_;
-//       });
-
-//   v_.ngui->addButton("Clear Constraints", [&]() {
-//     d_.soft_cons.clear();
-//     scaffold_coloring();
-
-//     v_.ngui->refresh();
-//   });
-
+//     ->setItems({"Choose", "Move", "Dragging","None"});// // then assign to the current scaling.
 //   auto window = v_.ngui->addWindow(Eigen::Vector2i(1200, 700),
 //                                    "Patches");
+
 //   auto tools = new nanogui::Widget(window);
 //   v_.ngui->addWidget("tools",tools);
 
-//   tools->setLayout(new nanogui::BoxLayout
-//                        (nanogui::Orientation::Horizontal,
-//                         nanogui::Alignment::Middle, 0, 6));
 
 //   auto button = new nanogui::Button(tools, "Add Patch");
 //   button->setCallback([&]() {
@@ -246,8 +298,7 @@ bool TextureGUI::extended_menu() {
 //   });
 //   reset_scale_button->setFixedSize(Vector2i(25,25));
 
-//   // Generate menu
-//   v_.screen->performLayout();
-
+       ImGui::End();
+   };
   return false;
 }

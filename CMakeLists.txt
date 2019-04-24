@@ -79,10 +79,17 @@ add_library(scaf_utils
     src/util/tetgenio_parser.cpp
     ${SRCFILES})
 
+add_executable(scaf_pack_bin src/main_texture.cpp
+  src/UI/TextureGUI.cpp
+  src/UI/TextureGUI_extended_menu.cpp
+  src/UI/TextureGUI_mouse_control.cpp)
+
 add_executable(scaf_param_bin src/main.cpp)
 add_executable(scaf_flow_bin src/main_flow.cpp)
 
 target_link_libraries(scaf_utils PUBLIC igl::png igl::triangle igl::tetgen igl::opengl_glfw igl::opengl_glfw_imgui)
+target_link_libraries(scaf_pack_bin
+  igl::png scaffold_map scaf_utils CLI11::CLI11)
 target_link_libraries(scaf_param_bin
   igl::png scaffold_map scaf_utils CLI11::CLI11)
 target_link_libraries(scaf_flow_bin

@@ -350,12 +350,12 @@ bool DeformGUI::extended_menu()
 
 
     ImGui::Checkbox("Remesh", &s_.optimize_scaffold);
-    ImGui::InputInt("It Per []", &inner_iters);
-    ImGui::Checkbox("Use Newton", &use_newton);
-    ImGui::Checkbox("Auto Weight", &auto_weight);
+    ImGui::InputInt("It Per []", &s_.inner_iters);
+    ImGui::Checkbox("Use Newton", &s_.use_newton);
+    ImGui::Checkbox("Auto Weight", &s_.auto_weight);
 
-    float val = d_.scaffold_factor;
-    if (ImGui::InputFloat("Scaf Weight",&val)) {
+    double val = d_.scaffold_factor;
+    if (ImGui::InputDouble("Scaf Weight",&val)) {
         d_.set_scaffold_factor(val);
          std::cout << "Weight:" << val << std::endl;
     }
