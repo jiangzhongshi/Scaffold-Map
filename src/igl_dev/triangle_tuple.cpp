@@ -126,7 +126,7 @@ namespace igl
       const Eigen::MatrixBase<DerivedFF> &FF,
       const Eigen::MatrixBase<DerivedFFi> &FFi)
   {
-    return F(fi, ei) == -1;
+    return FF(fi, ei) == -1;
   };
 
   IGL_INLINE bool triangle_tuples_equal(
