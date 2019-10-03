@@ -9,8 +9,8 @@
 
 #include "autodiff.h"
 
-typedef Eigen::VectorXd                     Gradient;
-typedef Eigen::MatrixXd                     Hessian;
+typedef Eigen::Matrix<double,6,1>  Gradient;
+typedef Eigen::Matrix<double,6,6>  Hessian;
 typedef DScalar2<double, Gradient, Hessian> DScalar;
 
 class ScafData;
