@@ -23,6 +23,7 @@ int main(int argc, char* argv[]) {
   }
 
   StateManager s_(DemoType::PARAM, filename);
+  auto &d_ = s_.scaf_data;
 
 #ifndef NOGUI
     igl::opengl::glfw::Viewer v;
@@ -37,7 +38,6 @@ int main(int argc, char* argv[]) {
 #else
   using namespace Eigen;
   using namespace std;
-  auto &d_ = s_.scaf_data;
   auto &ws = s_.ws_solver;
   double last_mesh_energy =  ws->compute_energy(d_.w_uv, false) / d_.mesh_measure;
   std::cout<<"Initial Energy"<<last_mesh_energy<<std::endl;
@@ -72,11 +72,11 @@ int main(int argc, char* argv[]) {
     last_mesh_energy = current_mesh_energy;
   }
 
-  MatrixXd wuv3 = MatrixXd::Zero(d_.v_num,3);
+  #endif
+  Eigen::MatrixXd wuv3 = Eigen::MatrixXd::Zero(d_.v_num,3);
   wuv3.leftCols(2) = d_.w_uv;
   s_.save(filename+".ser");
   igl::writeOBJ(filename+"_uv.obj", wuv3, d_.m_T);
   std::cout<<"END"<<std::endl;
-#endif
-  return 0;
+return 0;
 }
