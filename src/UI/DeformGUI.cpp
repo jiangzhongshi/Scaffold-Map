@@ -230,7 +230,7 @@ DeformGUI::DeformGUI(igl::opengl::glfw::Viewer &vi,
 //  v_.callback_init = [this](igl::opengl::glfw::Viewer &) {
 //    return extended_menu();
 //  };
-  extended_menu();
+  // extended_menu();
   v_.data().set_mesh(d_.w_uv, d_.surface_F);
 
     scaffold_coloring();
@@ -283,11 +283,12 @@ if(show_interior_boundary) {
 }
 }
 
-igl::opengl::glfw::imgui::ImGuiMenu menu_;
 bool DeformGUI::extended_menu()
 {
 	using namespace Eigen;
 	using namespace std;
+
+  static igl::opengl::glfw::imgui::ImGuiMenu menu_;
 	v_.plugins.push_back(&menu_);
 
 	menu_.callback_draw_viewer_menu = [&]() {

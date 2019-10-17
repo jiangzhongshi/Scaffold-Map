@@ -14,6 +14,8 @@ int main(int argc, char* argv[]) {
   command_line.add_option("-m,--mesh", filename, "Mesh path")->check(CLI::ExistingFile);
   bool show_gui = true;
   command_line.add_option("-g,--gui", show_gui, "Show GUI");
+  int iteration = 50;
+  command_line.add_option("-i,--iter", iteration, "Iterations"); 
   try {
       command_line.parse(argc, argv);
   } catch (const CLI::ParseError &e) {
@@ -28,7 +30,7 @@ int main(int argc, char* argv[]) {
     if (show_gui)
       v.launch();
     else {
-        while (s_.iter_count < 50) {
+        while (s_.iter_count < iteration) {
             gui.key_press(' ', 0);
           }
       }
@@ -41,7 +43,7 @@ int main(int argc, char* argv[]) {
   std::cout<<"Initial Energy"<<last_mesh_energy<<std::endl;
   cout << "Initial V_num: "<<d_.mv_num<<" F_num: "<<d_.mf_num<<endl;
   d_.energy = ws->compute_energy(d_.w_uv, true) / d_.mesh_measure;
-  while (s_.iter_count < 50) {
+  while (s_.iter_count < iteration) {
     std::cout << "=============" << std::endl;
     std::cout << "Iteration:" << s_.iter_count++ << '\t';
     igl::Timer timer;
