@@ -37,5 +37,8 @@ We provide three examples in this repo, parameterization of a camel, inflation o
 Press `[space]` to perform one iteration. 
 
 ## libigl version
-A simplified 2D version is integrated into libigl
+A simplified 2D version is integrated into libigl (MPL v2 license)
 https://github.com/libigl/libigl/tree/master/tutorial/710_SCAF
+
+## License
+This repository is an expolration groud for research purposes, therefore it contains files from multiple sources and copyright licenses. However, the author is in general happy to provide most of the code under MIT or MPL license. If you are interested in the commercial use of the algorithm, please contact the author.
