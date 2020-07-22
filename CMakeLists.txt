@@ -46,8 +46,8 @@ download_project(
   PROJ cli11
   SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/cli11
   DOWNLOAD_DIR ${CMAKE_SOURCE_DIR}/external/.cache/cli11
-  URL     https://github.com/CLIUtils/CLI11/archive/v1.6.1.tar.gz
-  URL_MD5 48ef97262adb0b47a2f0a7edbda6e2aa
+  URL     https://github.com/CLIUtils/CLI11/archive/v1.9.1.tar.gz
+  URL_MD5 13a8872af1137c8139cb5b77b1e50b39
 )
 add_subdirectory(${CMAKE_SOURCE_DIR}/external/cli11)
 
