@@ -34,6 +34,7 @@ endif()
 
 include(DownloadProject)
 
+if (NOT TARGET igl::core)
 download_project(
   PROJ         libigl
   SOURCE_DIR   ${CMAKE_SOURCE_DIR}/external/libigl
@@ -41,7 +42,12 @@ download_project(
   QUIET
   GIT_REPOSITORY https://github.com/jiangzhongshi/libigl.git
 )
+set(LIBIGL_INCLUDE_DIR )
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/external/libigl/cmake")
+include(libigl)
+endif()
 
+if (NOT TARGET CLI11::CLI11)
 download_project(
   PROJ cli11
   SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/cli11
@@ -49,9 +55,10 @@ download_project(
   URL     https://github.com/CLIUtils/CLI11/archive/v1.9.1.tar.gz
   URL_MD5 13a8872af1137c8139cb5b77b1e50b39
 )
-add_subdirectory(${CMAKE_SOURCE_DIR}/external/cli11)
 
-find_package(LIBIGL REQUIRED QUIET)
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/cli11)
+endif()
+
 
 
 # Add your project files

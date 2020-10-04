@@ -33,15 +33,15 @@ bool DeformGUI::mouse_down(int button, int mod) {
   Eigen::Vector3f bc;
   // Cast a ray in the view direction starting from the mouse position
   float x = v_.current_mouse_x;
-  float y = v_.core.viewport(3) - v_.current_mouse_y;
+  float y = v_.core().viewport(3) - v_.current_mouse_y;
 
   // only picking the interior.
   Eigen::MatrixXd m_uv3 = Eigen::MatrixXd::Zero(d_.mv_num, 3);
   auto& picked_face = d_.dim == 3?d_.surface_F:d_.m_T;
   m_uv3.leftCols(d_.w_uv.cols()) = d_.w_uv.topRows(d_.mv_num);
   if (igl::unproject_onto_mesh(Eigen::Vector2f(x, y),
-                               v_.core.view,
-                               v_.core.proj, v_.core.viewport,
+                               v_.core().view,
+                               v_.core().proj, v_.core().viewport,
                                m_uv3, picked_face,
                                fid, bc)) {
     v_.data().set_colors(mesh_color);
@@ -63,9 +63,9 @@ bool DeformGUI::mouse_down(int button, int mod) {
     Eigen::Vector3f coord =
         igl::project(
             Vector3f(m_uv3.row(vid).cast<float>()),
-            (v_.core.view).eval(),
-            v_.core.proj,
-            v_.core.viewport);
+            (v_.core().view).eval(),
+            v_.core().proj,
+            v_.core().viewport);
     down_z_ = coord[2];
 
     dragging_ = true;
@@ -79,20 +79,20 @@ bool DeformGUI::mouse_down(int button, int mod) {
 bool DeformGUI::render_to_png(const int width, const int height,
                                const std::string png_file) {
 
-  Eigen::Vector4f viewport_ori = v_.core.viewport;
-  v_.core.viewport << 0, 0, width, height;
+  Eigen::Vector4f viewport_ori = v_.core().viewport;
+  v_.core().viewport << 0, 0, width, height;
   Eigen::Matrix<unsigned char,Eigen::Dynamic,Eigen::Dynamic> R(width,height);
   Eigen::Matrix<unsigned char,Eigen::Dynamic,Eigen::Dynamic> G(width,height);
   Eigen::Matrix<unsigned char,Eigen::Dynamic,Eigen::Dynamic> B(width,height);
   Eigen::Matrix<unsigned char,Eigen::Dynamic,Eigen::Dynamic> A(width,height);
 
   // Draw the scene in the buffers
-  v_.core.draw_buffer(
+  v_.core().draw_buffer(
     v_.data(),false,R,G,B,A);
 
   // Save it to a PNG
   // igl::png::writePNG(R,G,B,A,png_file);
-  v_.core.viewport = viewport_ori;
+  v_.core().viewport = viewport_ori;
 
   return true;
 }
@@ -104,15 +104,15 @@ bool DeformGUI::mouse_up(int button, int mod) {
   int m_y = v_.current_mouse_y;
 
   Eigen::RowVector3f pos1 = igl::unproject(
-      Eigen::Vector3f(m_x, v_.core.viewport[3] - m_y, down_z_),
-      v_.core.view,
-      v_.core.proj, v_.core.viewport);
+      Eigen::Vector3f(m_x, v_.core().viewport[3] - m_y, down_z_),
+      v_.core().view,
+      v_.core().proj, v_.core().viewport);
   Eigen::RowVector3f pos0 = igl::unproject(
       Eigen::Vector3f(v_.down_mouse_x,
-                      v_.core.viewport[3] - v_.down_mouse_y,
+                      v_.core().viewport[3] - v_.down_mouse_y,
                       down_z_),
-      v_.core.view,
-      v_.core.proj, v_.core.viewport);
+      v_.core().view,
+      v_.core().proj, v_.core().viewport);
 
   Eigen::RowVector3d diff = Eigen::RowVector3d((pos1 - pos0).cast<double>());
 
@@ -253,7 +253,7 @@ void DeformGUI::scaffold_coloring() {
     for (int i = d_.mf_num; i < d_.f_num; i++)
       mesh_color.row(i) << 0.86, 0.86, 0.86;
     v_.data().set_colors(mesh_color);
-    v_.core.lighting_factor = 0;
+    v_.core().lighting_factor = 0;
   }
 
   // render overlay with d_.soft_cons
@@ -342,8 +342,8 @@ bool DeformGUI::extended_menu()
     menu_.callback_draw_custom_window = [&]()
     {
       // Define next window position + size
-      ImGui::SetNextWindowPos(ImVec2(1000.f * menu_.menu_scaling(), 10), ImGuiSetCond_FirstUseEver);
-      ImGui::SetNextWindowSize(ImVec2(200, 260), ImGuiSetCond_FirstUseEver);
+      ImGui::SetNextWindowPos(ImVec2(1000.f * menu_.menu_scaling(), 10), ImGuiCond_FirstUseEver);
+      ImGui::SetNextWindowSize(ImVec2(200, 260), ImGuiCond_FirstUseEver);
       ImGui::Begin(
     "Scaffold Tweak", nullptr,
     ImGuiWindowFlags_NoSavedSettings
@@ -374,5 +374,5 @@ bool DeformGUI::extended_menu()
 
 		ImGui::End();
 	};
-
+  return false;
 }
