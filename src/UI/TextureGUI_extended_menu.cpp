@@ -144,11 +144,11 @@ bool TextureGUI::extended_menu() {
         re_draw_ = true;
         if (viewer_cores_init) {
           if (!uv_space) {
-            viewer_core_2d_ = v_.core;
-            v_.core = viewer_core_3d_;
+            viewer_core_2d_ = v_.core();
+            v_.core() = viewer_core_3d_;
           } else {
-            viewer_core_3d_ = v_.core;
-            v_.core = viewer_core_2d_;
+            viewer_core_3d_ = v_.core();
+            v_.core() = viewer_core_2d_;
           }
         }
         if (continue_computing_) {

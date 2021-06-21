@@ -189,8 +189,8 @@ bool TextureGUI::post_draw() {
 bool TextureGUI::pre_draw() {
   if (re_draw_) {
     if (!viewer_cores_init) {
-      viewer_core_3d_ = v_.core;
-      viewer_core_2d_ = v_.core;
+      viewer_core_3d_ = v_.core();
+      viewer_core_2d_ = v_.core();
       viewer_cores_init = true;
 
       // viewer_core_3d_.show_texture = true;
@@ -207,7 +207,7 @@ bool TextureGUI::pre_draw() {
       viewer_core_2d_.lighting_factor = 0;
       viewer_core_2d_.align_camera_center(d_.w_uv, d_.surface_F);
 
-      v_.core = uv_space ? viewer_core_2d_ : viewer_core_3d_;
+      v_.core() = uv_space ? viewer_core_2d_ : viewer_core_3d_;
     }
 
     v_.data().clear();

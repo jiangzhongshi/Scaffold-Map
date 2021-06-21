@@ -40,7 +40,8 @@ download_project(
   SOURCE_DIR   ${CMAKE_SOURCE_DIR}/external/libigl
   DOWNLOAD_DIR ${CMAKE_SOURCE_DIR}/external/.cache/libigl
   QUIET
-  GIT_REPOSITORY https://github.com/jiangzhongshi/libigl.git
+  GIT_REPOSITORY https://github.com/libigl/libigl.git
+  GIT_TAG        682e4b9685d2737215f6629ecafcb318d714d556
 )
 set(LIBIGL_INCLUDE_DIR )
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/external/libigl/cmake")
